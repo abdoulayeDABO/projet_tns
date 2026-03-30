@@ -1,0 +1,12 @@
+<div class="bg-{{ color }}-500/20 border border-{{ color }}-500/50 rounded-lg p-4 mb-4">
+    <div class="flex">
+        <div class="flex-shrink-0">
+            <span class="text-{{ color }}-400 text-xl">
+                {% if type == 'success' %}✓{% elif type == 'error' %}✕{% elif type == 'warning' %}!{% else %}ℹ{% endif %}
+            </span>
+        </div>
+        <div class="ml-3">
+            <p class="text-{{ color }}-200">{{ message }}</p>
+        </div>
+    </div>
+</div>

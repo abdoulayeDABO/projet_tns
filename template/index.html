@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Accueil - Flask starter{% endblock %}  
+
+{% block content %}
+    <!-- Hero Section -->
+    <section class="relative overflow-hidden pt-32 pb-16 px-4">
+        <div class="max-w-7xl mx-auto">
+            <div class="text-center mb-16">
+                <h1 class="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-blue-400 via-cyan-400 to-blue-400 bg-clip-text text-transparent">
+                    Bienvenue sur Flask
+                </h1>
+                <p class="text-xl text-slate-300 mb-8 max-w-2xl mx-auto">
+                    Une application moderne combinant Flask, HTMX et Tailwind CSS pour une expérience utilisateur fluide et réactive.
+                </p>
+                <div class="flex gap-4 justify-center flex-wrap">
+                    <a href="{{ API_BASE_URL }}/data" class="px-8 py-3 border border-slate-500 rounded-lg font-semibold hover:border-cyan-400 hover:text-cyan-400 transition">
+                        Voir l'API
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+{% endblock %}
