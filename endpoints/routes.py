@@ -1,123 +1,627 @@
-from flask import Blueprint, jsonify, render_template_string
+"""
+Routes API pour la Partie 1 - Numérisation, Segmentation
+Cahier de Charge: TNS DIC2 - Dr. Moustapha MBAYE
+"""
 
+from flask import Blueprint, jsonify, send_file, request
+import numpy as np
+import scipy.io.wavfile as wavfile
+import librosa
+from pathlib import Path
+import io
 
 api_bp = Blueprint("api", __name__)
 
+# Paramètres globaux
+FREQUENCES_AUTORISEES = [16, 22.05, 44.1]  # kHz
+CODAGES_AUTORISES = [16, 32]  # bits
+DUREE_MAX = 300  # secondes
+SEUIL_AMPLITUDE_DEFAULT = 20  # %
+SILENCE_DUREE_DEFAULT = 500  # ms
 
-@api_bp.get("/api/data")
-def get_sample_data():
-    return jsonify(
-        {
-            "data": [
-                {"id": 1, "name": "Sample Item 1", "value": 100},
-                {"id": 2, "name": "Sample Item 2", "value": 200},
-                {"id": 3, "name": "Sample Item 3", "value": 300},
-            ],
-            "total": 3,
-            "timestamp": "2024-01-01T00:00:00Z",
-        }
-    )
+# Stockage en session
+recording_session = {
+    "audio_data": None,
+    "sample_rate": None,
+    "bit_depth": None,
+    "duration": 0.0,
+    "segments": [],
+    "current_recording": None
+}
 
-
-@api_bp.get("/api/items/<int:item_id>")
-def get_item(item_id: int):
-    return jsonify(
-        {
-            "item": {
-                "id": item_id,
-                "name": f"Sample Item {item_id}",
-                "value": item_id * 100,
-            },
-            "timestamp": "2024-01-01T00:00:00Z",
-        }
-    )
+filtering_session = {
+    "original_audio": None,
+    "filtered_audio": None,
+    "sample_rate": None,
+    "filename": None
+}
 
 
-# HTMX Endpoints
-@api_bp.get("/api/demo")
-def demo():
-    """Endpoint HTMX pour afficher une démo interactive"""
-    html = """
-    <div class="space-y-4">
-        <div class="bg-slate-700/50 rounded-lg p-4">
-            <h3 class="text-lg font-semibold mb-3">Conteneur Interactif</h3>
-            <button hx-post="/api/counter" hx-target="#counter-display" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded transition">
-                Incrémenter le compteur
-            </button>
-            <div id="counter-display" class="mt-4 text-center text-2xl font-bold text-cyan-400">0</div>
-        </div>
+def _normalize_audio_float(audio_data):
+    """Convertit les données audio en float32 mono normalisé [-1, 1]."""
+    if len(audio_data.shape) > 1:
+        audio_data = np.mean(audio_data, axis=1)
+
+    if audio_data.dtype == np.int16:
+        return audio_data.astype(np.float32) / 32768.0
+    if audio_data.dtype == np.int32:
+        return audio_data.astype(np.float32) / 2147483648.0
+    return audio_data.astype(np.float32)
+
+
+def _to_int16_wav(audio_data_float):
+    """Convertit un signal float32 [-1, 1] en int16 WAV."""
+    max_abs = np.max(np.abs(audio_data_float)) if len(audio_data_float) else 1.0
+    if max_abs > 1.0:
+        audio_data_float = audio_data_float / max_abs
+    return np.clip(audio_data_float * 32767.0, -32768, 32767).astype(np.int16)
+
+
+def _downsample_for_plot(x_values, y_values, max_points=2500):
+    """Réduit le nombre de points d'un tracé pour l'affichage web."""
+    n_points = len(x_values)
+    if n_points <= max_points:
+        return x_values.tolist(), y_values.tolist()
+
+    step = max(1, n_points // max_points)
+    return x_values[::step].tolist(), y_values[::step].tolist()
+
+
+def _compute_fft(audio_data, sample_rate):
+    """Calcule le spectre d'amplitude et les fréquences correspondantes."""
+    spectrum = np.fft.fft(audio_data)
+    freqs = np.fft.fftfreq(len(audio_data), d=1.0 / sample_rate)
+    amplitudes = np.abs(spectrum)
+    return freqs, amplitudes, spectrum
+
+
+def validate_parameters(frequency, duration, codage):
+    """
+    Valide les paramètres d'enregistrement selon le cahier des charges
+    
+    Args:
+        frequency: Fréquence en kHz
+        duration: Durée en secondes
+        codage: Codage en bits
+    
+    Returns:
+        Tuple (valid, message)
+    """
+    if frequency not in FREQUENCES_AUTORISEES:
+        return False, f"Fréquence invalide. Autorisées: {FREQUENCES_AUTORISEES} kHz"
+    
+    if codage not in CODAGES_AUTORISES:
+        return False, f"Codage invalide. Autorisé: {CODAGES_AUTORISES} bits"
+    
+    if not (1 <= duration <= DUREE_MAX):
+        return False, f"Durée invalide. Entre 1 et {DUREE_MAX} secondes"
+    
+    return True, "Paramètres valides"
+
+
+def detect_segments(audio_data, sample_rate, amplitude_threshold, silence_duration):
+    """
+    Détecte les segments de parole dans l'audio en utilisant la détection d'amplitude
+    
+    Args:
+        audio_data: Données audio (numpy array)
+        sample_rate: Fréquence d'échantillonnage en Hz
+        amplitude_threshold: Seuil d'amplitude (0-100) en pourcentage
+        silence_duration: Durée minimale de silence en ms
+    
+    Returns:
+        Liste de segments {"debut", "fin", "duree_ms"}
+    """
+    try:
+        # Convertir en float32 normalisé
+        if audio_data.dtype == np.int16:
+            audio_normalized = audio_data.astype(np.float32) / 32768.0
+        elif audio_data.dtype == np.int32:
+            audio_normalized = audio_data.astype(np.float32) / 2147483648.0
+        else:
+            audio_normalized = audio_data.astype(np.float32)
         
-        <div class="bg-slate-700/50 rounded-lg p-4">
-            <h3 class="text-lg font-semibold mb-3">Éléments Dynamiques</h3>
-            <button hx-get="/api/items-list" hx-target="#items-list" class="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 rounded transition">
-                Charger les éléments
-            </button>
-            <div id="items-list" class="mt-4"></div>
+        # Calcul de l'enveloppe d'amplitude
+        frame_length = sample_rate // 100  # 10ms frames
+        hop_length = frame_length // 2
+        
+        # Calculer la puissance par frame
+        energy = []
+        for i in range(0, len(audio_normalized) - frame_length, hop_length):
+            frame = audio_normalized[i:i + frame_length]
+            power = np.mean(frame ** 2)
+            energy.append(power)
+        
+        energy = np.array(energy)
+        
+        # Normaliser l'énergie et convertir le seuil
+        energy_normalized = energy / (np.max(energy) + 1e-10)
+        threshold_normalized = amplitude_threshold / 100.0
+        
+        # Déterminer les frames avec signal
+        frames_with_signal = energy_normalized > threshold_normalized
+        
+        # Convertir silence_duration de ms en frames
+        frame_duration_ms = (hop_length / sample_rate) * 1000
+        min_frames = int(silence_duration / frame_duration_ms)
+        
+        # Appliquer une fermeture morphologique
+        from scipy.ndimage import binary_closing
+        kernel = np.ones(max(1, min_frames))
+        frames_smooth = binary_closing(frames_with_signal, structure=kernel)
+        
+        # Détecter les transitions
+        transitions = np.diff(frames_smooth.astype(int))
+        starts = np.where(transitions == 1)[0]
+        ends = np.where(transitions == -1)[0]
+        
+        # S'assurer que nous avons des paires start/end
+        if len(starts) > len(ends):
+            ends = np.append(ends, len(frames_smooth) - 1)
+        if len(ends) > len(starts):
+            starts = np.insert(starts, 0, 0)
+        
+        # Convertir les indices de frames en secondes
+        segments = []
+        for idx, (start, end) in enumerate(zip(starts, ends), 1):
+            start_time = (start * hop_length) / sample_rate
+            end_time = (end * hop_length) / sample_rate
+            duration_ms = (end_time - start_time) * 1000
+            
+            # Filtrer les segments trop courts
+            if duration_ms >= silence_duration and duration_ms < 600000:
+                segments.append({
+                    "numero": idx,
+                    "debut": round(start_time, 3),
+                    "fin": round(end_time, 3),
+                    "duree_ms": round(duration_ms, 1)
+                })
+        
+        return segments
+    
+    except Exception as e:
+        print(f"Erreur dans detect_segments: {str(e)}")
+        return []
+
+
+@api_bp.post("/api/start-recording")
+def start_recording():
+    """Valide les paramètres et prépare l'enregistrement"""
+    try:
+        frequency = float(request.form.get("frequence", 22.05))
+        duration = int(request.form.get("duration", 10))
+        codage = int(request.form.get("codage", 16))
+        
+        valid, msg = validate_parameters(frequency, duration, codage)
+        
+        if not valid:
+            return f"""
+            <div class="p-4 bg-red-900/50 border border-red-700 rounded-lg">
+                <div class="flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-400">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    <p class="text-red-300 font-semibold">{msg}</p>
+                </div>
+            </div>
+            """
+        
+        recording_session.update({
+            "frequency": frequency,
+            "duration": duration,
+            "bit_depth": codage,
+            "sample_rate": int(frequency * 1000)
+        })
+        
+        html_response = f"""
+        <div class="p-4 bg-green-900/50 border border-green-700 rounded-lg">
+            <div class="flex items-center gap-2 mb-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-green-400">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <path d="m9 11 3 3L22 4"></path>
+                </svg>
+                <p class="text-green-300 font-semibold">Paramètres acceptés ✓</p>
+            </div>
+            <p class="text-sm text-green-200">
+                <strong>Fréquence:</strong> {frequency} kHz<br>
+                <strong>Durée:</strong> {duration}s<br>
+                <strong>Codage:</strong> {codage} bits<br>
+                <span class="text-xs text-green-300 mt-2 block">Microphone: Prêt à enregistrer</span>
+            </p>
         </div>
-    </div>
+        """
+        return html_response
+        
+    except Exception as e:
+        return f"""
+        <div class="p-4 bg-red-900/50 border border-red-700 rounded-lg">
+            <p class="text-red-300">Erreur: {str(e)}</p>
+        </div>
+        """, 400
+
+
+@api_bp.post("/api/save-recording")
+def save_recording():
+    """Sauvegarde l'enregistrement audio reçu depuis le client en WAV.
+
+    Le navigateur peut envoyer un flux WebM/Opus selon la plateforme.
+    Cet endpoint tente d'abord une lecture WAV directe, puis bascule
+    sur librosa pour les formats compressés et convertit en PCM.
     """
-    return render_template_string(html)
-
-
-@api_bp.post("/api/counter")
-def counter():
-    """Endpoint pour incrémenter le compteur"""
-    import random
-    count = random.randint(1, 100)
-    return f"<div class='text-2xl font-bold text-cyan-400'>{count}</div>"
-
-
-@api_bp.get("/api/items-list")
-def items_list():
-    """Endpoint HTMX pour afficher une liste d'éléments"""
-    html = """
-    <div class="space-y-2">
-        <div class="bg-slate-600/50 p-3 rounded hover:bg-slate-600 transition cursor-pointer">
-            <span class="font-semibold">Élément 1</span> - <span class="text-slate-300">Valeur: 100</span>
+    try:
+        if 'audio' not in request.files:
+            return """
+            <div class="p-4 bg-red-900/50 border border-red-700 rounded-lg">
+                <p class="text-red-300">Aucun fichier audio reçu</p>
+            </div>
+            """, 400
+        
+        audio_file = request.files['audio']
+        
+        # Essayer d'abord avec scipy.wavfile
+        try:
+            sample_rate, audio_data = wavfile.read(io.BytesIO(audio_file.read()))
+        except Exception as e:
+            print(f"scipy.wavfile échoué: {e}")
+            # Si échoue, utiliser librosa qui supporte plus de formats
+            try:
+                audio_file.seek(0)
+                audio_data, sample_rate = librosa.load(
+                    io.BytesIO(audio_file.read()), 
+                    sr=None,  # Conserver la fréquence originale
+                    mono=True
+                )
+                # Convertir float en int16
+                audio_data = (audio_data * 32767).astype(np.int16)
+            except Exception as e2:
+                return f"""
+                <div class="p-4 bg-red-900/50 border border-red-700 rounded-lg">
+                    <p class="text-red-300">Format audio invalide. Enregistrez/chargez un WAV valide ou activez la conversion navigateur. Détail: {str(e2)}</p>
+                </div>
+                """, 400
+        
+        # Gérer les stéréo -> mono
+        if len(audio_data.shape) > 1:
+            audio_data = np.mean(audio_data, axis=1).astype(audio_data.dtype)
+        
+        # Déterminer le type de données
+        if audio_data.dtype == np.int16:
+            bit_depth = 16
+        elif audio_data.dtype == np.int32:
+            bit_depth = 32
+        else:
+            bit_depth = 16
+        
+        # Créer le répertoire
+        locuteur = "locuteur_01"
+        db_dir = Path("database")
+        locuteur_dir = db_dir / locuteur
+        
+        if not locuteur_dir.exists():
+            session_number = 1
+        else:
+            existing_sessions = [
+                int(d.name.split("_")[1]) for d in locuteur_dir.iterdir() 
+                if d.is_dir() and d.name.startswith("session_")
+            ]
+            session_number = max(existing_sessions) + 1 if existing_sessions else 1
+        
+        session_dir = locuteur_dir / f"session_{session_number:02d}"
+        session_dir.mkdir(parents=True, exist_ok=True)
+        
+        existing_recordings = [
+            f for f in session_dir.iterdir() 
+            if f.is_file() and f.name.startswith("enreg_") and f.suffix == ".wav"
+        ]
+        recording_count = len(existing_recordings) + 1
+        
+        frequency_khz = int(sample_rate / 1000)
+        filename_str = f"enreg_{recording_count:03d}_{frequency_khz}kHz_{bit_depth}b.wav"
+        file_path = session_dir / filename_str
+        
+        wavfile.write(str(file_path), sample_rate, audio_data)
+        
+        recording_session.update({
+            "audio_data": audio_data,
+            "sample_rate": sample_rate,
+            "bit_depth": bit_depth,
+            "duration": len(audio_data) / sample_rate,
+            "file_path": str(file_path),
+            "filename": filename_str,
+            "session_dir": str(session_dir)
+        })
+        
+        html_response = f"""
+        <div class="p-4 bg-green-900/50 border border-green-700 rounded-lg">
+            <div class="flex items-center gap-2 mb-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-green-400">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <path d="m9 11 3 3L22 4"></path>
+                </svg>
+                <p class="text-green-300 font-semibold">Enregistrement sauvegardé </p>
+            </div>
+            <p class="text-sm text-green-200">
+                <strong>Fichier:</strong> {filename_str}<br>
+                <strong>Fréquence:</strong> {sample_rate} Hz ({frequency_khz} kHz)<br>
+                <strong>Durée:</strong> {recording_session['duration']:.1f}s<br>
+                <strong>Codage:</strong> {bit_depth} bits<br>
+                <strong>Chemin:</strong> database/{locuteur}/session_{session_number:02d}/
+            </p>
         </div>
-        <div class="bg-slate-600/50 p-3 rounded hover:bg-slate-600 transition cursor-pointer">
-            <span class="font-semibold">Élément 2</span> - <span class="text-slate-300">Valeur: 200</span>
+        """
+        
+        return html_response
+        
+    except Exception as e:
+        print(f"Erreur lors de la sauvegarde: {str(e)}")
+        return f"""
+        <div class="p-4 bg-red-900/50 border border-red-700 rounded-lg">
+            <p class="text-red-300">Erreur: {str(e)}</p>
         </div>
-        <div class="bg-slate-600/50 p-3 rounded hover:bg-slate-600 transition cursor-pointer">
-            <span class="font-semibold">Élément 3</span> - <span class="text-slate-300">Valeur: 300</span>
-        </div>
-    </div>
-    """
-    return render_template_string(html)
+        """, 400
 
 
-@api_bp.get("/api/greeting")
-def greeting():
-    """Endpoint HTMX pour afficher un message de salutation"""
-    html = """
-    <div class="bg-slate-700/50 border border-cyan-500/50 rounded-lg p-6 text-center">
-        <p class="text-xl font-semibold text-cyan-400 mb-2">Bienvenue! 👋</p>
-        <p class="text-slate-300">Vous avez réussi à utiliser HTMX pour charger du contenu dynamiquement!</p>
-    </div>
-    """
-    return render_template_string(html)
+@api_bp.post("/api/segment-audio")
+def segment_audio():
+    """Segmente l'audio enregistré par détection de silence"""
+    try:
+        if recording_session.get("audio_data") is None:
+            return """
+            <div class="p-4 bg-red-900/50 border border-red-700 rounded-lg">
+                <div class="flex items-center gap-2 mb-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-400">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    <p class="text-red-300 font-semibold">Aucun enregistrement</p>
+                </div>
+                <p class="text-sm text-red-200">Veuillez d'abord enregistrer un audio</p>
+            </div>
+            """
+        
+        seuil_amplitude = int(request.form.get("seuil_amplitude", SEUIL_AMPLITUDE_DEFAULT))
+        silence_duree = int(request.form.get("silence_duree", SILENCE_DUREE_DEFAULT))
+        
+        if not (0 <= seuil_amplitude <= 100):
+            seuil_amplitude = SEUIL_AMPLITUDE_DEFAULT
+        if not (50 <= silence_duree <= 2000):
+            silence_duree = SILENCE_DUREE_DEFAULT
+        
+        segments = detect_segments(
+            recording_session["audio_data"],
+            recording_session["sample_rate"],
+            seuil_amplitude,
+            silence_duree
+        )
+        
+        recording_session["segments"] = segments
+        
+        html_response = f"""
+        <div class="p-4 bg-blue-900/50 border border-blue-700 rounded-lg">
+            <div class="flex items-center gap-2 mb-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <path d="m9 11 3 3L22 4"></path>
+                </svg>
+                <p class="text-blue-300 font-semibold">Segmentation réussie </p>
+            </div>
+            <p class="text-sm text-blue-200">
+                <strong>{len(segments)} segment(s) détecté(s)</strong><br>
+                Seuil: {seuil_amplitude}% | Silence min: {silence_duree}ms
+            </p>
+        </div>
+        """
+        return html_response
+        
+    except Exception as e:
+        print(f"Erreur lors de la segmentation: {str(e)}")
+        return f"""
+        <div class="p-4 bg-red-900/50 border border-red-700 rounded-lg">
+            <p class="text-red-300">Erreur: {str(e)}</p>
+        </div>
+        """, 400
 
 
-@api_bp.get("/api/activity")
-def activity():
-    """Endpoint HTMX pour afficher l'activité récente"""
-    html = """
-    <div class="space-y-3">
-        <div class="flex items-center gap-3 p-3 bg-slate-700/30 rounded hover:bg-slate-700/50 transition cursor-pointer">
-            <div class="w-2 h-2 bg-green-400 rounded-full"></div>
-            <span class="text-sm">Nouvel utilisateur inscrit</span>
-            <span class="text-xs text-slate-400 ml-auto">il y a 5 min</span>
-        </div>
-        <div class="flex items-center gap-3 p-3 bg-slate-700/30 rounded hover:bg-slate-700/50 transition cursor-pointer">
-            <div class="w-2 h-2 bg-blue-400 rounded-full"></div>
-            <span class="text-sm">Requête API effectuée</span>
-            <span class="text-xs text-slate-400 ml-auto">il y a 12 min</span>
-        </div>
-        <div class="flex items-center gap-3 p-3 bg-slate-700/30 rounded hover:bg-slate-700/50 transition cursor-pointer">
-            <div class="w-2 h-2 bg-cyan-400 rounded-full"></div>
-            <span class="text-sm">Mise à jour du système</span>
-            <span class="text-xs text-slate-400 ml-auto">il y a 1 heure</span>
-        </div>
-    </div>
-    """
-    return render_template_string(html)
+@api_bp.get("/api/get-segments")
+def get_segments():
+    """Retourne les segments au format JSON"""
+    try:
+        segments = recording_session.get("segments", [])
+        return jsonify({
+            "segments": segments,
+            "count": len(segments)
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@api_bp.get("/api/download-segment/<int:segment_id>")
+def download_segment(segment_id):
+    """Télécharge un segment audio spécifique"""
+    try:
+        segments = recording_session.get("segments", [])
+        
+        if segment_id < 0 or segment_id >= len(segments):
+            return "Segment non trouvé", 404
+        
+        segment = segments[segment_id]
+        audio_data = recording_session.get("audio_data")
+        sample_rate = recording_session.get("sample_rate")
+        
+        if audio_data is None or sample_rate is None:
+            return "Données audio non disponibles", 400
+        
+        start_sample = int(segment["debut"] * sample_rate)
+        end_sample = int(segment["fin"] * sample_rate)
+        segment_audio = audio_data[start_sample:end_sample]
+        
+        wav_buffer = io.BytesIO()
+        wavfile.write(wav_buffer, sample_rate, segment_audio)
+        wav_buffer.seek(0)
+        
+        return send_file(
+            wav_buffer,
+            mimetype="audio/wav",
+            as_attachment=True,
+            download_name=f"segment_{segment_id + 1:03d}.wav"
+        )
+        
+    except Exception as e:
+        return f"Erreur: {str(e)}", 400
+
+
+@api_bp.get("/api/download-recording")
+def download_recording():
+    """Télécharge l'enregistrement complet"""
+    try:
+        if recording_session.get("file_path") is None:
+            return "Aucun enregistrement disponible", 400
+        
+        file_path = Path(recording_session["file_path"])
+        
+        if not file_path.exists():
+            return "Le fichier n'existe pas", 404
+        
+        return send_file(
+            str(file_path),
+            as_attachment=True,
+            download_name=recording_session.get("filename", "recording.wav"),
+            mimetype="audio/wav"
+        )
+        
+    except Exception as e:
+        return f"Erreur: {str(e)}", 400
+
+
+@api_bp.post("/api/upload-audio")
+def upload_audio_for_filtering():
+    """Charge un fichier audio, le convertit en mono float et renvoie les données de tracé initiales."""
+    try:
+        if "audio_file" not in request.files:
+            return jsonify({"error": "Aucun fichier audio reçu"}), 400
+
+        audio_file = request.files["audio_file"]
+        filename = audio_file.filename or "audio_input"
+        file_bytes = audio_file.read()
+        if not file_bytes:
+            return jsonify({"error": "Fichier audio vide"}), 400
+
+        try:
+            sample_rate, audio_data = wavfile.read(io.BytesIO(file_bytes))
+            audio_float = _normalize_audio_float(audio_data)
+        except Exception:
+            audio_float, sample_rate = librosa.load(io.BytesIO(file_bytes), sr=None, mono=True)
+            audio_float = audio_float.astype(np.float32)
+
+        filtering_session.update({
+            "original_audio": audio_float,
+            "filtered_audio": None,
+            "sample_rate": int(sample_rate),
+            "filename": filename
+        })
+
+        time_axis = np.arange(len(audio_float), dtype=np.float32) / float(sample_rate)
+        plot_t, plot_x = _downsample_for_plot(time_axis, audio_float)
+
+        freqs, amps, _ = _compute_fft(audio_float, sample_rate)
+        positive = freqs >= 0
+        plot_f, plot_mag = _downsample_for_plot(freqs[positive], amps[positive])
+
+        return jsonify({
+            "message": "Fichier chargé avec succès",
+            "filename": filename,
+            "sample_rate": int(sample_rate),
+            "duration": round(len(audio_float) / float(sample_rate), 3),
+            "time_before": {"t": plot_t, "x": plot_x},
+            "freq_before": {"f": plot_f, "mag": plot_mag}
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@api_bp.post("/api/apply-filter")
+def apply_rectangular_filter():
+    """Applique un masque fréquentiel rectangulaire passe-bande ou coupe-bande puis reconstruit le signal."""
+    try:
+        original_audio = filtering_session.get("original_audio")
+        sample_rate = filtering_session.get("sample_rate")
+
+        if original_audio is None or sample_rate is None:
+            return jsonify({"error": "Aucun audio chargé. Chargez d'abord un fichier."}), 400
+
+        filter_type = request.form.get("filter_type", "bandpass")
+        fmin = float(request.form.get("fmin", 100))
+        fmax = float(request.form.get("fmax", 4000))
+
+        nyquist = sample_rate / 2.0
+        if fmin < 0 or fmax <= 0 or fmin >= fmax:
+            return jsonify({"error": "Bornes invalides: il faut 0 ≤ fmin < fmax."}), 400
+        if fmax > nyquist:
+            return jsonify({"error": f"fmax doit être ≤ fréquence de Nyquist ({nyquist:.1f} Hz)."}), 400
+        if filter_type not in ["bandpass", "bandstop"]:
+            return jsonify({"error": "Type de filtre invalide (bandpass|bandstop)."}), 400
+
+        freqs, original_amp, original_spectrum = _compute_fft(original_audio, sample_rate)
+
+        passband_mask = ((np.abs(freqs) >= fmin) & (np.abs(freqs) <= fmax)).astype(np.float32)
+        if filter_type == "bandpass":
+            rectangular_mask = passband_mask
+        else:
+            rectangular_mask = 1.0 - passband_mask
+
+        filtered_spectrum = original_spectrum * rectangular_mask
+        filtered_audio = np.real(np.fft.ifft(filtered_spectrum)).astype(np.float32)
+
+        filtering_session["filtered_audio"] = filtered_audio
+
+        time_axis = np.arange(len(original_audio), dtype=np.float32) / float(sample_rate)
+        t_before, x_before = _downsample_for_plot(time_axis, original_audio)
+        t_after, x_after = _downsample_for_plot(time_axis, filtered_audio)
+
+        filtered_amp = np.abs(filtered_spectrum)
+        positive = freqs >= 0
+        f_before, mag_before = _downsample_for_plot(freqs[positive], original_amp[positive])
+        f_after, mag_after = _downsample_for_plot(freqs[positive], filtered_amp[positive])
+
+        return jsonify({
+            "message": "Filtrage appliqué avec succès",
+            "filter_type": filter_type,
+            "fmin": fmin,
+            "fmax": fmax,
+            "time_before": {"t": t_before, "x": x_before},
+            "time_after": {"t": t_after, "x": x_after},
+            "freq_before": {"f": f_before, "mag": mag_before},
+            "freq_after": {"f": f_after, "mag": mag_after},
+            "audio_url": "/api/download-filtered-audio"
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@api_bp.get("/api/download-filtered-audio")
+def download_filtered_audio():
+    """Télécharge le signal filtré reconstruit au format WAV."""
+    try:
+        filtered_audio = filtering_session.get("filtered_audio")
+        sample_rate = filtering_session.get("sample_rate")
+
+        if filtered_audio is None or sample_rate is None:
+            return "Aucun signal filtré disponible", 400
+
+        output_buffer = io.BytesIO()
+        wavfile.write(output_buffer, sample_rate, _to_int16_wav(filtered_audio))
+        output_buffer.seek(0)
+
+        input_name = filtering_session.get("filename") or "audio"
+        stem = Path(input_name).stem
+        return send_file(
+            output_buffer,
+            mimetype="audio/wav",
+            as_attachment=True,
+            download_name=f"{stem}_filtre.wav"
+        )
+    except Exception as e:
+        return f"Erreur: {str(e)}", 400

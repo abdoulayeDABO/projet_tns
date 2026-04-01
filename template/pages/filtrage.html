@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+
+{% block title %}Analyse & Filtrage - TNS{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-8">
+    <!-- En-tête -->
+    <div class="mb-12">
+        <div class="flex items-center gap-3 mb-4">
+            <h1 class="text-4xl font-bold text-gray-100">Analyse et Filtrage</h1>
+        </div>
+        <p class="text-gray-400 text-lg">FFT, visualisation spectrale et filtrage rectangulaire</p>
+    </div>
+
+    <!-- Grille principale -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Section Chargement (gauche) -->
+        <div class="lg:col-span-1">
+            <div class="card p-8 sticky top-20">
+                <div class="flex items-center gap-2 mb-6">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-300">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    <h2 class="text-2xl font-bold text-gray-100">Chargement</h2>
+                </div>
+
+                <form id="upload-form" class="space-y-6">
+                    <!-- Upload fichier -->
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-300 mb-3">Fichier audio</label>
+                        <div class="relative">
+                            <input type="file" name="audio_file" id="audio_file" accept=".wav,.mp3,.ogg" class="w-full px-4 py-3 bg-gray-900 border border-gray-800 rounded-lg text-gray-100 file:bg-gray-800 file:border-0 file:text-gray-300 file:rounded file:px-3 file:py-1 cursor-pointer focus:border-gray-700 focus:outline-none transition hover:border-gray-700">
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2">WAV, MP3, OGG acceptés</p>
+                    </div>
+
+                    <!-- Info fichier -->
+                    <div id="file-info" class="p-3 bg-gray-900 border border-gray-800 rounded-lg text-sm text-gray-400 hidden">
+                        <p><strong>Fichier:</strong> <span id="file-name">-</span></p>
+                        <p><strong>Taille:</strong> <span id="file-size">-</span></p>
+                    </div>
+
+                    <!-- Bouton Charger -->
+                    <button type="button" onclick="loadAudioFile()" class="w-full px-6 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg font-semibold transition flex items-center justify-center gap-2 text-gray-100">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                        Charger le fichier
+                    </button>
+                </form>
+
+                <!-- Statut -->
+                <div id="upload-status" class="p-3 bg-gray-900 border border-gray-800 rounded-lg text-sm text-gray-400 text-center mt-6">
+                    En attente d'un fichier audio
+                </div>
+            </div>
+        </div>
+
+        <!-- Section Filtrage (droite) -->
+        <div class="lg:col-span-2 space-y-8">
+            <!-- Paramètres de Filtrage -->
+            <div class="card p-8">
+                <div class="flex items-center gap-2 mb-6">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-300">
+                        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                    </svg>
+                    <h2 class="text-2xl font-bold text-gray-100">Paramètres de Filtrage</h2>
+                </div>
+
+                <form id="filter-form" class="space-y-6">
+                    <!-- Type de filtre -->
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-300 mb-3">Type de filtre</label>
+                        <div class="flex flex-row flex-wrap gap-3">
+                            <label class="flex-1 min-w-[220px] cursor-pointer">
+                                <input type="radio" name="filter_type" value="bandpass" class="peer sr-only" checked>
+                                <div class="h-full px-4 py-3 rounded-lg border border-gray-800 bg-gray-900 transition-all duration-150 hover:border-blue-500/60 hover:bg-gray-800 peer-checked:border-blue-500 peer-checked:bg-blue-500/10 peer-checked:shadow-[0_0_0_1px_rgba(59,130,246,0.35)]">
+                                    <div class="flex items-center justify-between gap-3">
+                                        <span class="text-sm font-semibold text-gray-200">Passe-bande</span>
+                                    </div>
+                                    <p class="mt-1 text-xs text-gray-400">Conserve les fréquences dans [fmin, fmax]</p>
+                                </div>
+                            </label>
+
+                            <label class="flex-1 min-w-[220px] cursor-pointer">
+                                <input type="radio" name="filter_type" value="bandstop" class="peer sr-only">
+                                <div class="h-full px-4 py-3 rounded-lg border border-gray-800 bg-gray-900 transition-all duration-150 hover:border-gray-600 hover:bg-gray-800 peer-checked:border-blue-500 peer-checked:bg-blue-500/10 peer-checked:shadow-[0_0_0_1px_rgba(59,130,246,0.35)]">
+                                    <div class="flex items-center justify-between gap-3">
+                                        <span class="text-sm font-semibold text-gray-200">Coupe-bande</span>
+                                    </div>
+                                    <p class="mt-1 text-xs text-gray-400">Supprime les fréquences dans [fmin, fmax]</p>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Fréquence minimale -->
+                    <div>
+                        <div class="flex justify-between items-center mb-3">
+                            <label class="text-sm font-semibold text-gray-300">Fréquence min (Hz)</label>
+                            <span class="text-lg font-mono bg-gray-900 px-3 py-1 rounded text-gray-300" id="fmin-value">100</span>
+                        </div>
+                        <input type="range" min="0" max="10000" value="100" name="fmin" class="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer" id="fmin-range" oninput="document.getElementById('fmin-value').textContent = this.value">
+                        <p class="text-xs text-gray-500 mt-2">Borne inférieure du filtre</p>
+                    </div>
+
+                    <!-- Fréquence maximale -->
+                    <div>
+                        <div class="flex justify-between items-center mb-3">
+                            <label class="text-sm font-semibold text-gray-300">Fréquence max (Hz)</label>
+                            <span class="text-lg font-mono bg-gray-900 px-3 py-1 rounded text-gray-300" id="fmax-value">4000</span>
+                        </div>
+                        <input type="range" min="0" max="10000" value="4000" name="fmax" class="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer" id="fmax-range" oninput="document.getElementById('fmax-value').textContent = this.value">
+                        <p class="text-xs text-gray-500 mt-2">Borne supérieure du filtre</p>
+                    </div>
+
+                    <!-- Bouton Filtrer -->
+                    <button type="button" onclick="applyFilter()" class="w-full px-6 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg font-semibold transition flex items-center justify-center gap-2 text-gray-100">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                        </svg>
+                        Appliquer le filtre
+                    </button>
+                </form>
+
+                <!-- Zone de réponse -->
+                <div id="filter-response" class="mt-6 min-h-0"></div>
+            </div>
+
+            <!-- Graphiques et résultats -->
+            <div class="card p-8">
+                <div class="flex items-center gap-2 mb-6">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-300">
+                        <line x1="18" y1="20" x2="18" y2="10"></line>
+                        <line x1="12" y1="20" x2="12" y2="4"></line>
+                        <line x1="6" y1="20" x2="6" y2="14"></line>
+                    </svg>
+                    <h2 class="text-2xl font-bold text-gray-100">Résultats</h2>
+                </div>
+
+                <!-- Graphique temporel -->
+                <div class="mb-6">
+                    <h3 class="text-lg font-semibold text-gray-300 mb-3">Signal temporel x(t)</h3>
+                    <canvas id="time-domain" class="w-full h-48 bg-gray-900 border border-gray-800 rounded-lg"></canvas>
+                    <p class="text-xs text-gray-500 text-center mt-2">Forme d'onde avant et après filtrage</p>
+                </div>
+
+                <!-- Graphique FFT -->
+                <div class="mb-6">
+                    <h3 class="text-lg font-semibold text-gray-300 mb-3">Spectre FFT |X(f)|</h3>
+                    <canvas id="frequency-domain" class="w-full h-48 bg-gray-900 border border-gray-800 rounded-lg"></canvas>
+                    <p class="text-xs text-gray-500 text-center mt-2">Spectre d'amplitude avant et après filtrage</p>
+                </div>
+
+                <!-- Lecteur et téléchargement -->
+                <div id="playback-section" class="hidden space-y-4 mt-6">
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-300 mb-3">Écouter le signal filtré</label>
+                        <audio controls class="w-full bg-gray-900 rounded-lg" id="audio-player">
+                            <source src="" type="audio/wav">
+                            Votre navigateur ne supporte pas la lecture audio HTML5
+                        </audio>
+                    </div>
+
+                    <button type="button" onclick="downloadFilteredAudio()" class="w-full px-6 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg font-semibold transition flex items-center justify-center gap-2 text-gray-100">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                        Télécharger le signal filtré
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="/static/audio.js"></script>
+
+{% endblock %}

@@ -1,0 +1,156 @@
+<!-- Contenu des onglets -->
+<div id="partie1" class="tab-content block">
+    
+    <!-- Colonne 1: Numérisation -->
+    <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-8 backdrop-blur-sm hover:border-cyan-500/50 transition mb-8">
+        <h3 class="text-2xl font-bold mb-8 text-cyan-400 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-mic">
+                <path d="M12 19v3"></path>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                <rect x="9" y="2" width="6" height="13" rx="3"></rect>
+            </svg>
+            Numérisation
+        </h3>
+        
+        <form class="space-y-6" id="recording-form">
+            <!-- Sélecteur Fréquence -->
+            <div>
+                <label class="block text-sm font-semibold text-slate-300 mb-3">Fréquence d'échantillonnage</label>
+                <select name="frequence" class="w-full px-4 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:border-cyan-400 focus:outline-none transition">
+                    {% for freq in frequences %}
+                        <option value="{{ freq }}" {% if loop.first %}selected{% endif %}>
+                            {% if freq == 22.05 %}22.05 kHz{% else %}{{ freq }} kHz{% endif %}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Boutons Radio Codage -->
+            <div>
+                <label class="block text-sm font-semibold text-slate-300 mb-3">Codage</label>
+                <div class="flex gap-3">
+                    {% for codage in codages %}
+                        <label class="flex items-center p-3 bg-slate-700/50 border border-slate-600 rounded-lg cursor-pointer hover:bg-slate-700 hover:border-cyan-500 transition flex-1">
+                            <input type="radio" name="codage" value="{{ codage }}" class="w-4 h-4 accent-cyan-400" {% if loop.first %}checked{% endif %}>
+                            <span class="ml-2 text-sm">{{ codage }} bits</span>
+                        </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Durée -->
+            <div>
+                <label class="block text-sm font-semibold text-slate-300 mb-3">Durée d'enregistrement (secondes)</label>
+                <input type="number" min="1" max="300" value="10" name="duration" class="w-full px-4 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:border-cyan-400 focus:outline-none transition">
+                <p class="text-xs text-slate-500 mt-2">Entre 1 et 300 secondes</p>
+            </div>
+
+            <!-- Boutons Enregistrer/Sauvegarder -->
+            <div class="grid grid-cols-2 gap-3 pt-4">
+                <button type="button" hx-post="/api/start-recording" hx-include="#recording-form" hx-target="#numerisation-response" hx-disabled-elt="this" hx-swap="innerHTML" class="px-4 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-lg font-semibold hover:from-cyan-400 hover:to-blue-400 transition flex items-center justify-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-play">
+                        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                    </svg>
+                    Enregistrer
+                </button>
+                <button type="button" onclick="fetch('/api/download-recording').then(r => r.blob()).then(blob => { const url = window.URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'enregistrement.wav'; a.click(); window.URL.revokeObjectURL(url); })" class="px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg font-semibold hover:from-green-400 hover:to-emerald-400 transition flex items-center justify-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-download">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    Télécharger
+                </button>
+            </div>
+        </form>
+
+        <!-- Zone de réponse Numérisation -->
+        <div id="numerisation-response" class="mt-6 min-h-0"></div>
+    </div>
+
+    <!-- Colonne 2: Segmentation -->
+    <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-8 backdrop-blur-sm hover:border-cyan-500/50 transition mb-8">
+        <h3 class="text-2xl font-bold mb-8 text-cyan-400 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-scissors">
+                <circle cx="6" cy="6" r="3"></circle>
+                <path d="M8.12 8.12 12 12"></path>
+                <path d="M20 4 8.12 15.88"></path>
+                <circle cx="6" cy="18" r="3"></circle>
+                <path d="M14.8 14.8 20 20"></path>
+            </svg>
+            Segmentation
+        </h3>
+
+        <form class="space-y-6" id="segmentation-form">
+            <!-- Seuil d'amplitude -->
+            <div>
+                <label class="block text-sm font-semibold text-slate-300 mb-3">Seuil d'amplitude</label>
+                <div class="flex items-center gap-3 mb-2">
+                    <input type="range" min="0" max="100" value="20" name="seuil_amplitude" class="flex-1 h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-400" id="seuil-range" oninput="document.getElementById('seuil-value').textContent = this.value + '%'">
+                    <span class="text-sm font-mono bg-slate-700/50 px-3 py-2 rounded text-cyan-400 min-w-12" id="seuil-value">20%</span>
+                </div>
+                <p class="text-xs text-slate-500">Niveau en dessous duquel c'est du silence</p>
+            </div>
+
+            <!-- Durée minimale de silence -->
+            <div>
+                <label class="block text-sm font-semibold text-slate-300 mb-3">Durée minimale de silence (ms)</label>
+                <input type="number" min="50" max="2000" value="500" step="50" name="silence_duree" class="w-full px-4 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white placeholder-slate-500 focus:border-cyan-400 focus:outline-none transition">
+                <p class="text-xs text-slate-500 mt-2">Entre 50 et 2000 millisecondes</p>
+            </div>
+
+            <!-- Bouton Segmenter -->
+            <button type="button" hx-post="/api/segment-audio" hx-include="#segmentation-form" hx-target="#segmentation-response" hx-disabled-elt="this" hx-swap="innerHTML" hx-on::after-swap="populateSegmentsTable()" class="w-full px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg font-semibold hover:from-blue-400 hover:to-purple-400 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-scissors">
+                    <circle cx="6" cy="6" r="3"></circle>
+                    <path d="M8.12 8.12 12 12"></path>
+                    <path d="M20 4 8.12 15.88"></path>
+                    <circle cx="6" cy="18" r="3"></circle>
+                    <path d="M14.8 14.8 20 20"></path>
+                </svg>
+                Segmenter l'audio
+            </button>
+        </form>
+
+        <!-- Zone de réponse Segmentation -->
+        <div id="segmentation-response" class="mt-6 min-h-0"></div>
+    </div>
+    
+    <!-- Tableau des Segments Détectés -->
+    <div class="bg-slate-800/50 border border-slate-700 rounded-xl p-8 backdrop-blur-sm hover:border-cyan-500/50 transition">
+        <h3 class="text-2xl font-bold mb-6 text-cyan-400 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-table-2">
+                <rect width="18" height="18" x="3" y="3" rx="2"></rect>
+                <path d="M9 3v18M9 9h12M9 15h12"></path>
+            </svg>
+            Résultats
+        </h3>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-slate-600">
+                        <th class="text-left py-3 px-4 font-semibold text-slate-300">N°</th>
+                        <th class="text-left py-3 px-4 font-semibold text-slate-300">Début (s)</th>
+                        <th class="text-left py-3 px-4 font-semibold text-slate-300">Fin (s)</th>
+                        <th class="text-left py-3 px-4 font-semibold text-slate-300">Durée (ms)</th>
+                        <th class="text-left py-3 px-4 font-semibold text-slate-300">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="segments-table">
+                    <tr class="border-b border-slate-700 hover:bg-slate-700/50 transition">
+                        <td colspan="5" class="py-8 px-4 text-center text-slate-500">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-inbox mx-auto mb-2 opacity-50">
+                                <polyline points="22 12 18 12 15 21 9 21 6 12 2 12"></polyline>
+                            </svg>
+                            <p class="font-semibold">Aucun segment détecté</p>
+                            <p class="text-xs text-slate-600 mt-1">Enregistrez et segmentez pour voir les résultats</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+
+</div>

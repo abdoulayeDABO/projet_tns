@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+
+{% block title %}Numérisation & Segmentation - TNS{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-8">
+    <!-- En-tête -->
+    <div class="mb-12">
+        <div class="flex items-center gap-3 mb-4">
+            <h1 class="text-4xl font-bold text-gray-100">Numérisation et Segmentation</h1>
+        </div>
+        <p class="text-gray-400 text-lg">Enregistrez, segmentez et analysez votre signal vocal</p>
+    </div>
+
+    <!-- Grille principale -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Section Enregistrement (gauche) -->
+        <div class="lg:col-span-1">
+            <div class="card p-8 sticky top-20">
+                <div class="flex items-center gap-2 mb-6">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-300">
+                        <path d="M12 19v3"></path>
+                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                        <rect x="9" y="2" width="6" height="13" rx="3"></rect>
+                    </svg>
+                    <h2 class="text-2xl font-bold text-gray-100">Enregistrement</h2>
+                </div>
+
+                <form id="recording-form" class="space-y-6">
+                    <!-- Fréquence -->
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-300 mb-3">Fréquence d'échantillonnage</label>
+                        <select name="frequence" class="w-full px-4 py-3 bg-gray-900 border border-gray-800 rounded-lg text-gray-100 focus:border-gray-700 focus:outline-none transition hover:border-gray-700">
+                            {% for freq in frequences %}
+                                <option value="{{ freq }}" {% if loop.first %}selected{% endif %}>
+                                    {% if freq == 22.05 %}22.05 kHz{% else %}{{ freq }} kHz{% endif %}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Codage -->
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-300 mb-3">Codage</label>
+                        <fieldset class="flex gap-3">
+                            {% for codage in codages %}
+                                <label class="flex-1">
+                                    <input type="radio" name="codage" value="{{ codage }}" class="peer hidden" {% if loop.first %}checked{% endif %}>
+                                    <div class="p-3 bg-gray-900 border-2 border-gray-800 rounded-lg cursor-pointer hover:border-gray-700 peer-checked:border-emerald-600 peer-checked:bg-emerald-950/20 transition font-medium text-center text-sm text-gray-300 peer-checked:text-emerald-300">
+                                        {{ codage }} bits
+                                    </div>
+                                </label>
+                            {% endfor %}
+                        </fieldset>
+                    </div>
+
+                    <!-- Durée -->
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-300 mb-3">Durée (secondes)</label>
+                        <input type="number" min="1" max="300" value="10" name="duration" class="w-full px-4 py-3 bg-gray-900 border border-gray-800 rounded-lg text-gray-100 placeholder-gray-600 focus:border-gray-700 focus:outline-none transition">
+                        <p class="text-xs text-gray-500 mt-2">Entre 1 et 300 secondes</p>
+                    </div>
+
+                    <!-- Boutons -->
+                    <div class="grid grid-cols-2 gap-3 pt-4">
+                        <button type="button" id="record-btn" onclick="startRecording()" class="px-4 py-3 bg-green-700 hover:bg-green-600 rounded-lg font-semibold transition flex items-center justify-center gap-2 text-white">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                                <circle cx="12" cy="12" r="10"></circle>
+                            </svg>
+                            Démarrer
+                        </button>
+                        <button type="button" id="stop-btn" onclick="stopRecording()" disabled class="px-4 py-3 bg-red-900/30 border border-red-700/50 rounded-lg font-semibold opacity-50 cursor-not-allowed flex items-center justify-center gap-2 text-red-300 disabled:opacity-50 disabled:cursor-not-allowed">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                                <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                            </svg>
+                            Arrêter
+                        </button>
+                    </div>
+
+                    <!-- Onde visualisée -->
+                    <div class="mt-6">
+                        <canvas id="waveform" class="w-full h-24 bg-gray-950 border border-gray-800 rounded-lg"></canvas>
+                        <p class="text-xs text-gray-500 text-center mt-2">Forme d'onde en temps réel</p>
+                    </div>
+
+                    <!-- Statut -->
+                    <div id="record-status" class="p-3 bg-gray-900 border border-gray-800 rounded-lg text-sm text-gray-400 text-center">
+                        Prêt à enregistrer
+                    </div>
+                </form>
+
+                <!-- Bouton Télécharger -->
+                <button type="button" onclick="downloadRecording()" class="w-full mt-6 px-4 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg font-semibold transition flex items-center justify-center gap-2 text-gray-100">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    Télécharger
+                </button>
+            </div>
+        </div>
+
+        <!-- Section Segmentation (droite) -->
+        <div class="lg:col-span-2 space-y-8">
+            <!-- Paramètres de Segmentation -->
+            <div class="card p-8">
+                <div class="flex items-center gap-2 mb-6">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-300">
+                        <circle cx="6" cy="6" r="3"></circle>
+                        <path d="M8.12 8.12 12 12"></path>
+                        <path d="M20 4 8.12 15.88"></path>
+                        <circle cx="6" cy="18" r="3"></circle>
+                        <path d="M14.8 14.8 20 20"></path>
+                    </svg>
+                    <h2 class="text-2xl font-bold text-gray-100">Segmentation</h2>
+                </div>
+
+                <form id="segmentation-form" class="space-y-6">
+                    <!-- Seuil d'amplitude -->
+                    <div>
+                        <div class="flex justify-between items-center mb-3">
+                            <label class="text-sm font-semibold text-gray-300">Seuil d'amplitude</label>
+                            <span class="text-lg font-mono bg-gray-900 px-3 py-1 rounded text-gray-300" id="seuil-value">20%</span>
+                        </div>
+                        <input type="range" min="0" max="100" value="20" name="seuil_amplitude" class="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer" id="seuil-range" oninput="document.getElementById('seuil-value').textContent = this.value + '%'">
+                        <p class="text-xs text-gray-500 mt-2">Niveau en dessous duquel c'est du silence</p>
+                    </div>
+
+                    <!-- Durée minimale de silence -->
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-300 mb-3">Durée minimale de silence (ms)</label>
+                        <input type="number" min="50" max="2000" value="500" step="50" name="silence_duree" class="w-full px-4 py-3 bg-gray-900 border border-gray-800 rounded-lg text-gray-100 placeholder-gray-600 focus:border-gray-700 focus:outline-none transition">
+                        <p class="text-xs text-gray-500 mt-2">Entre 50 et 2000 millisecondes</p>
+                    </div>
+
+                    <!-- Bouton Segmenter -->
+                    <button type="button" onclick="segmentAudio()" class="w-full px-6 py-3 bg-gray-800 hover:bg-gray-700 rounded-lg font-semibold transition flex items-center justify-center gap-2 text-gray-100">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                        </svg>
+                        Segmenter l'audio
+                    </button>
+                </form>
+
+                <!-- Zone de réponse -->
+                <div id="segmentation-response" class="mt-6 min-h-0"></div>
+            </div>
+
+            <!-- Tableau des segments -->
+            <div class="card p-8">
+                <div class="flex items-center gap-2 mb-6">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-300">
+                        <rect width="18" height="18" x="3" y="3" rx="2"></rect>
+                        <path d="M9 3v18M9 9h12M9 15h12"></path>
+                    </svg>
+                    <h2 class="text-2xl font-bold text-gray-100">Segments détectés</h2>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="border-b border-gray-800">
+                                <th class="text-left py-3 px-4 font-semibold text-gray-300">N°</th>
+                                <th class="text-left py-3 px-4 font-semibold text-gray-300">Début (s)</th>
+                                <th class="text-left py-3 px-4 font-semibold text-gray-300">Fin (s)</th>
+                                <th class="text-left py-3 px-4 font-semibold text-gray-300">Durée (ms)</th>
+                                <th class="text-left py-3 px-4 font-semibold text-gray-300">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="segments-table">
+                            <tr class="border-b border-gray-800 hover:bg-gray-900/50 transition">
+                                <td colspan="5" class="py-8 px-4 text-center text-gray-500">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mx-auto mb-2 opacity-50">
+                                        <polyline points="22 12 18 12 15 21 9 21 6 12 2 12"></polyline>
+                                    </svg>
+                                    <p class="font-semibold text-gray-400">Aucun segment détecté</p>
+                                    <p class="text-xs text-gray-600 mt-1">Enregistrez et segmentez pour voir les résultats</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="/static/recorder.js"></script>
+
+{% endblock %}

@@ -1,25 +1,70 @@
 {% extends "base.html" %}
 
-{% block title %}Accueil - Flask starter{% endblock %}  
+{% block title %}App Web de Traitement Numérique - Accueil{% endblock %}
 
 {% block content %}
-    <!-- Hero Section -->
-    <section class="relative overflow-hidden pt-32 pb-16 px-4">
-        <div class="max-w-7xl mx-auto">
-            <div class="text-center mb-16">
-                <h1 class="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-blue-400 via-cyan-400 to-blue-400 bg-clip-text text-transparent">
-                    Bienvenue sur Flask
-                </h1>
-                <p class="text-xl text-slate-300 mb-8 max-w-2xl mx-auto">
-                    Une application moderne combinant Flask, HTMX et Tailwind CSS pour une expérience utilisateur fluide et réactive.
-                </p>
-                <div class="flex gap-4 justify-center flex-wrap">
-                    <a href="{{ API_BASE_URL }}/data" class="px-8 py-3 border border-slate-500 rounded-lg font-semibold hover:border-cyan-400 hover:text-cyan-400 transition">
-                        Voir l'API
-                    </a>
+<div class="max-w-7xl mx-auto px-6 py-16">
+    <!-- Header -->
+    <div class="mb-12">
+        <h1 class="text-3xl font-bold text-gray-100 mb-2">Choisissez une option</h1>
+        <p class="text-gray-400">Sélectionnez une fonctionnalité pour commencer</p>
+    </div>
+
+    <!-- Grid of cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Card 1: Recording & Segmentation -->
+        <a href="/numerisation" class="card p-8 hover:shadow-lg cursor-pointer group">
+            <div class="flex items-start gap-4 mb-4">
+                <div class="w-12 h-12 bg-gray-800 rounded-lg flex items-center justify-center group-hover:bg-gray-700 transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-300">
+                        <path d="M12 19v3M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                        <rect x="9" y="2" width="6" height="13" rx="3"></rect>
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="text-xl font-semibold text-gray-100">Enregistrement</h2>
+                    <p class="text-sm text-gray-400">& Segmentation</p>
                 </div>
             </div>
-        </div>
-    </section>
+            <p class="text-gray-400 text-sm mb-4">
+                Enregistrez votre voix directement depuis le navigateur et segmentez automatiquement votre signal par détection de silence.
+            </p>
+            <div class="flex items-center gap-2 text-gray-300 font-medium text-sm group-hover:gap-3 transition-all">
+                <span>Accéder</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                    <polyline points="12 5 19 12 12 19"></polyline>
+                </svg>
+            </div>
+        </a>
 
+        <!-- Card 2: Analysis & Filtering -->
+        <a href="/filtrage" class="card p-8 hover:shadow-lg cursor-pointer group">
+            <div class="flex items-start gap-4 mb-4">
+                <div class="w-12 h-12 bg-gray-800 rounded-lg flex items-center justify-center group-hover:bg-gray-700 transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-300">
+                        <path d="M2 12h20M2 6h20M2 18h20"></path>
+                        <circle cx="12" cy="3" r="1"></circle>
+                        <circle cx="19" cy="3" r="1"></circle>
+                        <circle cx="5" cy="3" r="1"></circle>
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="text-xl font-semibold text-gray-100">Analyse</h2>
+                    <p class="text-sm text-gray-400">& Filtrage</p>
+                </div>
+            </div>
+            <p class="text-gray-400 text-sm mb-4">
+                Chargez un fichier audio, visualisez son spectre via FFT et appliquez un filtre rectangulaire pour nettoyer votre signal.
+            </p>
+            <div class="flex items-center gap-2 text-gray-300 font-medium text-sm group-hover:gap-3 transition-all">
+                <span>Accéder</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                    <polyline points="12 5 19 12 12 19"></polyline>
+                </svg>
+            </div>
+        </a>
+    </div>
+</div>
 {% endblock %}

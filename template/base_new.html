@@ -14,48 +14,41 @@
         }
         
         body {
-            background: #0a0a0a;
-            color: #e5e5e5;
+            background: linear-gradient(135deg, #f8f9fa 0%, #f3f4f6 100%);
+            color: #1f2937;
         }
         
         .card {
-            background: #141414;
-            border: 1px solid #2a2a2a;
+            background: white;
+            border: 1px solid #e5e7eb;
             border-radius: 12px;
             transition: all 0.2s ease;
         }
         
         .card:hover {
-            border-color: #3a3a3a;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-            background: #1a1a1a;
+            border-color: #d1d5db;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
         }
         
         input, select, textarea {
-            background: #1a1a1a;
-            border: 1px solid #2a2a2a;
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
             border-radius: 8px;
             padding: 8px 12px;
             font-size: 14px;
             transition: all 0.2s ease;
-            width: 100%;
-            color: #e5e5e5;
-        }
-        
-        input::placeholder, select::placeholder, textarea::placeholder {
-            color: #666;
         }
         
         input:focus, select:focus, textarea:focus {
             outline: none;
-            background: #222;
-            border-color: #404040;
-            box-shadow: 0 0 0 3px rgba(64, 64, 64, 0.1);
+            background: white;
+            border-color: #9ca3af;
+            box-shadow: 0 0 0 3px rgba(156, 163, 175, 0.1);
         }
         
         .btn {
-            background: #e5e5e5;
-            color: #0a0a0a;
+            background: #1f2937;
+            color: white;
             border: none;
             border-radius: 8px;
             padding: 10px 16px;
@@ -66,35 +59,34 @@
         }
         
         .btn:hover:not(:disabled) {
-            background: #f5f5f5;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            background: #111827;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
         
         .btn:disabled {
-            background: #2a2a2a;
-            color: #666;
+            background: #d1d5db;
             cursor: not-allowed;
             opacity: 0.5;
         }
         
         .btn-secondary {
-            background: #2a2a2a;
-            color: #e5e5e5;
+            background: #e5e7eb;
+            color: #1f2937;
         }
         
         .btn-secondary:hover {
-            background: #3a3a3a;
+            background: #d1d5db;
         }
     </style>
     {% block extra_head %}{% endblock %}
 </head>
 <body>
     <!-- Navigation -->
-    <nav class="bg-black border-b border-gray-800 sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-4 py-4">
+    <nav class="bg-white border-b border-gray-200 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-6 py-4">
             <div class="flex items-center justify-between">
-                <a href="/" class="text-lg font-semibold text-gray-100 hover:text-white transition">
-                    Application web de Traitement Numérique du signal vocal
+                <a href="/" class="text-lg font-semibold text-gray-900 hover:text-gray-700 transition">
+                    App Web de Traitement Numérique
                 </a>
             </div>
         </div>
@@ -106,8 +98,8 @@
     </main>
 
     <!-- Footer -->
-    <footer class="bg-black border-t border-gray-800 py-6 px-6 mt-16">
-        <div class="max-w-7xl mx-auto text-center text-gray-600 text-sm">
+    <footer class="bg-white border-t border-gray-200 py-6 px-6 mt-16">
+        <div class="max-w-7xl mx-auto text-center text-gray-500 text-sm">
             <p>&copy; 2026 App Web de Traitement Numérique</p>
         </div>
     </footer>
@@ -133,6 +125,3 @@
     </script>
 </body>
 </html>
-
-
-
