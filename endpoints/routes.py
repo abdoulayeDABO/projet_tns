@@ -3,12 +3,13 @@ Routes API pour la Partie 1 - Numérisation, Segmentation
 Cahier de Charge: TNS DIC2 - Dr. Moustapha MBAYE
 """
 
-from flask import Blueprint, jsonify, send_file, request
+from flask import Blueprint, jsonify, send_file, request, current_app
 import numpy as np
 import scipy.io.wavfile as wavfile
 import librosa
 from pathlib import Path
 import io
+import errno
 
 api_bp = Blueprint("api", __name__)
 
@@ -73,6 +74,14 @@ def _compute_fft(audio_data, sample_rate):
     freqs = np.fft.fftfreq(len(audio_data), d=1.0 / sample_rate)
     amplitudes = np.abs(spectrum)
     return freqs, amplitudes, spectrum
+
+
+def _get_audio_storage_root():
+    """Retourne le dossier de stockage audio (configurable et writable)."""
+    configured_dir = current_app.config.get("AUDIO_STORAGE_DIR")
+    storage_root = Path(configured_dir) if configured_dir else Path("/tmp/tns_data")
+    storage_root.mkdir(parents=True, exist_ok=True)
+    return storage_root
 
 
 def validate_parameters(frequency, duration, codage):
@@ -294,9 +303,9 @@ def save_recording():
         else:
             bit_depth = 16
         
-        # Créer le répertoire
+        # Créer le répertoire de stockage (configurable en déploiement)
         locuteur = "locuteur_01"
-        db_dir = Path("database")
+        db_dir = _get_audio_storage_root()
         locuteur_dir = db_dir / locuteur
         
         if not locuteur_dir.exists():
@@ -347,12 +356,27 @@ def save_recording():
                 <strong>Fréquence:</strong> {sample_rate} Hz ({frequency_khz} kHz)<br>
                 <strong>Durée:</strong> {recording_session['duration']:.1f}s<br>
                 <strong>Codage:</strong> {bit_depth} bits<br>
-                <strong>Chemin:</strong> database/{locuteur}/session_{session_number:02d}/
+                <strong>Chemin:</strong> {session_dir}/
             </p>
         </div>
         """
         
         return html_response
+
+    except OSError as e:
+        if e.errno == errno.EROFS:
+            storage_dir = current_app.config.get("AUDIO_STORAGE_DIR", "/tmp/tns_data")
+            return f"""
+            <div class="p-4 bg-red-900/50 border border-red-700 rounded-lg">
+                <p class="text-red-300">Système de fichiers en lecture seule. Configurez <code>AUDIO_STORAGE_DIR</code> vers un volume writable (ex: <code>/tmp/tns_data</code> ou un volume monté). Dossier actuel: {storage_dir}</p>
+            </div>
+            """, 400
+        print(f"Erreur système lors de la sauvegarde: {str(e)}")
+        return f"""
+        <div class="p-4 bg-red-900/50 border border-red-700 rounded-lg">
+            <p class="text-red-300">Erreur système: {str(e)}</p>
+        </div>
+        """, 400
         
     except Exception as e:
         print(f"Erreur lors de la sauvegarde: {str(e)}")

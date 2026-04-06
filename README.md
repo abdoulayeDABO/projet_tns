@@ -140,7 +140,10 @@ DATABASE_URL=sqlite:///app.db
 API_BASE_URL=http://localhost:8000/api
 BASE_URL=http://localhost:8000
 SECRET_KEY=your-secret-key
+AUDIO_STORAGE_DIR=/tmp/tns_data
 ```
+
+- `AUDIO_STORAGE_DIR` doit pointer vers un dossier writable en production (volume monté recommandé).
 
 ## 🔧 Technologies
 

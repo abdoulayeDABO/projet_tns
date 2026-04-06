@@ -17,6 +17,7 @@ os.makedirs(app.instance_path, exist_ok=True)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key')
 app.config['API_BASE_URL'] = os.getenv('API_BASE_URL', 'http://localhost:5000/api')
 app.config['BASE_URL'] = os.getenv('BASE_URL', 'http://localhost:5000')
+app.config['AUDIO_STORAGE_DIR'] = os.getenv('AUDIO_STORAGE_DIR', '/tmp/tns_data')
 
 # Configuration de la base de données SQLite
 db_path = Path(app.instance_path) / 'tns.db'
