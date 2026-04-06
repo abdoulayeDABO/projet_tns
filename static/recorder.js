@@ -4,15 +4,13 @@
 
 let mediaRecorder;
 let audioChunks = [];
-let audioContext;
-let analyser;
-let animationId;
 let recordedBlob;
 let isRecording = false;
 let countdownInterval;
 let autoStopTimeout;
 let requestedSampleRate = 22050;
 let requestedBitDepth = 16;
+let currentSegmentAudio = null;
 
 function audioBufferToMono(audioBuffer) {
   const channels = audioBuffer.numberOfChannels;
@@ -177,11 +175,6 @@ async function startRecording() {
       }
     });
 
-    audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    analyser = audioContext.createAnalyser();
-    analyser.fftSize = 2048;
-    audioContext.createMediaStreamSource(stream).connect(analyser);
-
     const options = MediaRecorder.isTypeSupported("audio/wav")
       ? { mimeType: "audio/wav" }
       : { mimeType: "audio/webm;codecs=opus" };
@@ -216,7 +209,6 @@ async function startRecording() {
 
     mediaRecorder.start();
     toggleRecordButtons(true);
-    visualizeAudio();
     startCountdownAndAutoStop(duration);
     updateStatus(`Enregistrement en cours (${duration}s)...`, "success");
   } catch (error) {
@@ -244,10 +236,6 @@ function stopRecording() {
   clearTimeout(autoStopTimeout);
   isRecording = false;
   toggleRecordButtons(false);
-
-  if (animationId) {
-    cancelAnimationFrame(animationId);
-  }
 }
 
 function toggleRecordButtons(recordingMode) {
@@ -303,52 +291,6 @@ function startCountdownAndAutoStop(maxDuration) {
       stopRecording();
     }
   }, (maxDuration + 1) * 1000);
-}
-
-function visualizeAudio() {
-  if (!analyser) {
-    return;
-  }
-
-  const canvas = document.getElementById("waveform");
-  if (!canvas) {
-    return;
-  }
-
-  const context = canvas.getContext("2d");
-  const bufferLength = analyser.frequencyBinCount;
-  const dataArray = new Uint8Array(bufferLength);
-
-  function draw() {
-    animationId = requestAnimationFrame(draw);
-    analyser.getByteFrequencyData(dataArray);
-
-    const width = canvas.width;
-    const height = canvas.height;
-    context.fillStyle = "#0f172a";
-    context.fillRect(0, 0, width, height);
-
-    context.strokeStyle = "#10b981";
-    context.lineWidth = 2;
-    context.beginPath();
-
-    const sliceWidth = width / bufferLength;
-    let x = 0;
-    for (let index = 0; index < bufferLength; index += 1) {
-      const y = dataArray[index] / 128.0 * (height / 2);
-      if (index === 0) {
-        context.moveTo(x, y);
-      } else {
-        context.lineTo(x, y);
-      }
-      x += sliceWidth;
-    }
-
-    context.lineTo(width, height / 2);
-    context.stroke();
-  }
-
-  draw();
 }
 
 async function saveRecording() {
@@ -465,6 +407,7 @@ async function loadSegmentsTable() {
             <td class="py-3 px-4">
               <div class="flex gap-2">
                 <button onclick="playSegment(${segmentId})" class="px-3 py-1 bg-blue-600 hover:bg-blue-500 rounded text-xs text-white transition">Écouter</button>
+                <button onclick="stopSegmentPlayback()" class="px-3 py-1 bg-amber-600 hover:bg-amber-500 rounded text-xs text-white transition">Stop</button>
                 <a href="/api/download-segment/${segmentId}" class="px-3 py-1 bg-green-600 hover:bg-green-500 rounded text-xs text-white transition">Télécharger</a>
               </div>
             </td>
@@ -478,10 +421,24 @@ async function loadSegmentsTable() {
 }
 
 function playSegment(segmentId) {
-  const audio = new Audio(`/api/download-segment/${segmentId}`);
-  audio.play().catch(error => {
+  stopSegmentPlayback();
+  currentSegmentAudio = new Audio(`/api/download-segment/${segmentId}`);
+  currentSegmentAudio.play().catch(error => {
     updateStatus(`Erreur lecture segment: ${error.message}`, "error");
   });
+  currentSegmentAudio.onended = () => {
+    currentSegmentAudio = null;
+  };
+}
+
+function stopSegmentPlayback() {
+  if (!currentSegmentAudio) {
+    return;
+  }
+
+  currentSegmentAudio.pause();
+  currentSegmentAudio.currentTime = 0;
+  currentSegmentAudio = null;
 }
 
 document.addEventListener("DOMContentLoaded", () => {

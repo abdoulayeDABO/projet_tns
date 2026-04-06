@@ -77,11 +77,42 @@ def _compute_fft(audio_data, sample_rate):
 
 
 def _get_audio_storage_root():
-    """Retourne le dossier de stockage audio (configurable et writable)."""
+    """Retourne le dossier de stockage audio writable.
+
+    En déploiement serverless (ex: Vercel), le filesystem du projet est
+    read-only. On tente d'abord le dossier configuré, puis on bascule
+    automatiquement vers `/tmp/tns_data` si nécessaire.
+    """
     configured_dir = current_app.config.get("AUDIO_STORAGE_DIR")
-    storage_root = Path(configured_dir) if configured_dir else Path("/tmp/tns_data")
-    storage_root.mkdir(parents=True, exist_ok=True)
-    return storage_root
+    primary_root = Path(configured_dir) if configured_dir else Path("/tmp/tns_data")
+
+    try:
+        primary_root.mkdir(parents=True, exist_ok=True)
+        return primary_root
+    except OSError as error:
+        if error.errno not in (errno.EROFS, errno.EACCES, errno.EPERM):
+            raise
+
+    fallback_root = Path("/tmp/tns_data")
+    fallback_root.mkdir(parents=True, exist_ok=True)
+    return fallback_root
+
+
+def _format_frequency_label(sample_rate):
+    """Formate la fréquence pour les noms de fichiers.
+
+    Exemples:
+    - 16000 Hz -> 16kHz
+    - 22050 Hz -> 22_05kHz
+    - 44100 Hz -> 44_1kHz
+    """
+    khz_value = sample_rate / 1000.0
+
+    if float(khz_value).is_integer():
+        return f"{int(khz_value)}kHz"
+
+    khz_text = f"{khz_value:.2f}".rstrip("0").rstrip(".")
+    return f"{khz_text.replace('.', '_')}kHz"
 
 
 def validate_parameters(frequency, duration, codage):
@@ -326,8 +357,8 @@ def save_recording():
         ]
         recording_count = len(existing_recordings) + 1
         
-        frequency_khz = int(sample_rate / 1000)
-        filename_str = f"enreg_{recording_count:03d}_{frequency_khz}kHz_{bit_depth}b.wav"
+        frequency_label = _format_frequency_label(sample_rate)
+        filename_str = f"enreg_{recording_count:03d}_{frequency_label}_{bit_depth}b.wav"
         file_path = session_dir / filename_str
         
         wavfile.write(str(file_path), sample_rate, audio_data)
@@ -353,7 +384,7 @@ def save_recording():
             </div>
             <p class="text-sm text-green-200">
                 <strong>Fichier:</strong> {filename_str}<br>
-                <strong>Fréquence:</strong> {sample_rate} Hz ({frequency_khz} kHz)<br>
+                <strong>Fréquence:</strong> {sample_rate} Hz ({frequency_label})<br>
                 <strong>Durée:</strong> {recording_session['duration']:.1f}s<br>
                 <strong>Codage:</strong> {bit_depth} bits<br>
                 <strong>Chemin:</strong> {session_dir}/

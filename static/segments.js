@@ -2,6 +2,8 @@
  * Script pour gérer les segments détectés
  */
 
+let previewSegmentAudio = null;
+
 function populateSegmentsTable() {
   fetch("/api/get-segments")
     .then(response => response.json())
@@ -41,9 +43,12 @@ function populateSegmentsTable() {
                     )}ms</td>
                     <td class="py-3 px-4">
                         <div class="flex gap-2">
-                            <button onclick="playSegment(${segment.debut}, ${segment.fin})" class="px-3 py-1 bg-blue-600 hover:bg-blue-500 rounded text-xs text-white transition">
+                            <button onclick="previewSegment(${segment.debut}, ${segment.fin})" class="px-3 py-1 bg-blue-600 hover:bg-blue-500 rounded text-xs text-white transition">
                                 Écouter
                             </button>
+                          <button onclick="stopPreviewSegmentPlayback()" class="px-3 py-1 bg-amber-600 hover:bg-amber-500 rounded text-xs text-white transition">
+                          Stop
+                        </button>
                             <button onclick="downloadSegment(${segment.debut}, ${segment.fin}, ${index +
             1})" class="px-3 py-1 bg-green-600 hover:bg-green-500 rounded text-xs text-white transition">
                                 Télécharger
@@ -58,9 +63,20 @@ function populateSegmentsTable() {
     .catch(error => console.error("Erreur:", error));
 }
 
-function playSegment(start, end) {
+function previewSegment(start, end) {
+  stopPreviewSegmentPlayback();
   alert(`Écouter le segment de ${start.toFixed(3)}s à ${end.toFixed(3)}s`);
   // À implémenter avec Web Audio API
+}
+
+function stopPreviewSegmentPlayback() {
+  if (!previewSegmentAudio) {
+    return;
+  }
+
+  previewSegmentAudio.pause();
+  previewSegmentAudio.currentTime = 0;
+  previewSegmentAudio = null;
 }
 
 function downloadSegment(start, end, index) {

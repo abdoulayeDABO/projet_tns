@@ -145,6 +145,17 @@ AUDIO_STORAGE_DIR=/tmp/tns_data
 
 - `AUDIO_STORAGE_DIR` doit pointer vers un dossier writable en production (volume monté recommandé).
 
+### Déploiement Vercel (important)
+
+- Le filesystem du projet est en lecture seule sur Vercel.
+- L'application bascule automatiquement sur `/tmp/tns_data` si `AUDIO_STORAGE_DIR` n'est pas writable.
+- Pour éviter l'erreur `Read-only file system`, configurez `AUDIO_STORAGE_DIR=/tmp/tns_data` dans les variables d'environnement Vercel.
+
+Format de nommage des enregistrements:
+
+- `enreg_{NNN}_{FREQUENCE}kHz_{CODAGE}b.wav`
+- Exemples: `enreg_001_16kHz_16b.wav`, `enreg_002_22_05kHz_32b.wav`, `enreg_003_44_1kHz_16b.wav`
+
 ## 🔧 Technologies
 
 - **Backend** : Flask 3.1+
