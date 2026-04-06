@@ -284,12 +284,7 @@ def start_recording():
 
 @api_bp.post("/api/save-recording")
 def save_recording():
-    """Sauvegarde l'enregistrement audio reçu depuis le client en WAV.
-
-    Le navigateur peut envoyer un flux WebM/Opus selon la plateforme.
-    Cet endpoint tente d'abord une lecture WAV directe, puis bascule
-    sur librosa pour les formats compressés et convertit en PCM.
-    """
+    """Sauvegarde un enregistrement WAV déjà converti côté navigateur."""
     try:
         if 'audio' not in request.files:
             return """
@@ -299,28 +294,26 @@ def save_recording():
             """, 400
         
         audio_file = request.files['audio']
-        
-        # Essayer d'abord avec scipy.wavfile
+        audio_bytes = audio_file.read()
+
+        wav_headers = (b"RIFF", b"RIFX", b"RF64")
+        has_wav_header = len(audio_bytes) >= 4 and audio_bytes[:4] in wav_headers
+
+        if not has_wav_header:
+            return """
+            <div class="p-4 bg-red-900/50 border border-red-700 rounded-lg">
+                <p class="text-red-300">Format non-WAV reçu. La conversion en WAV doit être faite côté navigateur avant l'envoi.</p>
+            </div>
+            """, 400
+
         try:
-            sample_rate, audio_data = wavfile.read(io.BytesIO(audio_file.read()))
-        except Exception as e:
-            print(f"scipy.wavfile échoué: {e}")
-            # Si échoue, utiliser librosa qui supporte plus de formats
-            try:
-                audio_file.seek(0)
-                audio_data, sample_rate = librosa.load(
-                    io.BytesIO(audio_file.read()), 
-                    sr=None,  # Conserver la fréquence originale
-                    mono=True
-                )
-                # Convertir float en int16
-                audio_data = (audio_data * 32767).astype(np.int16)
-            except Exception as e2:
-                return f"""
-                <div class="p-4 bg-red-900/50 border border-red-700 rounded-lg">
-                    <p class="text-red-300">Format audio invalide. Enregistrez/chargez un WAV valide ou activez la conversion navigateur. Détail: {str(e2)}</p>
-                </div>
-                """, 400
+            sample_rate, audio_data = wavfile.read(io.BytesIO(audio_bytes))
+        except Exception as wav_error:
+            return f"""
+            <div class="p-4 bg-red-900/50 border border-red-700 rounded-lg">
+                <p class="text-red-300">WAV invalide ou corrompu. Détail: {str(wav_error)}</p>
+            </div>
+            """, 400
         
         # Gérer les stéréo -> mono
         if len(audio_data.shape) > 1:

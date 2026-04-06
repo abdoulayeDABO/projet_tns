@@ -657,7 +657,7 @@ async function convertBlobToWav(sourceBlob, targetSampleRate, targetBitDepth) {
 
 /**
  * Lance l'enregistrement audio avec les paramètres sélectionnés dans le formulaire.
- * Valide les paramètres côté serveur avant d'accéder au microphone.
+ * Validation locale puis accès direct au microphone (démarrage rapide).
  */
 async function startRecording() {
   try {
@@ -682,22 +682,12 @@ async function startRecording() {
     requestedSampleRate = Math.round(frequency * 1000);
     requestedBitDepth = codage;
 
-    // Validation côté serveur
-    const validationData = new FormData();
-    validationData.append("frequence", frequency);
-    validationData.append("duration", duration);
-    validationData.append("codage", codage);
-
-    const validationResponse = await fetch("/api/start-recording", {
-      method: "POST",
-      body: validationData
-    });
-
-    document.getElementById("record-status").innerHTML = await validationResponse.text();
-
-    if (!validationResponse.ok) {
+    if (duration < 1 || duration > 300) {
+      updateStatus("Durée invalide. Entre 1 et 300 secondes.", "error");
       return;
     }
+
+    updateStatus("Initialisation du microphone...", "info");
 
     // Accès au microphone
     const stream = await navigator.mediaDevices.getUserMedia({
@@ -746,14 +736,14 @@ async function startRecording() {
         return;
       }
 
-      // CORRECTION : feedback pendant la conversion (peut prendre quelques secondes)
-      updateStatus("Conversion WAV en cours...", "info");
+      updateStatus("Traitement en cours...", "info");
 
       try {
         const chunkType = audioChunks[0]?.type;
         const sourceBlob = new Blob(audioChunks, {
           type: mediaRecorder.mimeType || chunkType || "audio/webm"
         });
+        updateStatus("Conversion WAV en cours...", "info");
         recordedBlob = await convertBlobToWav(
           sourceBlob,
           requestedSampleRate,
@@ -1008,7 +998,7 @@ async function loadSegmentsTable() {
                 class="px-3 py-1 bg-amber-600 hover:bg-amber-500 rounded text-xs text-white transition">
                 Stop
               </button>
-              
+              <a
                 href="/api/download-segment/${index}"
                 class="px-3 py-1 bg-green-600 hover:bg-green-500 rounded text-xs text-white transition">
                 Télécharger
