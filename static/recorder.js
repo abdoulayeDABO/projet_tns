@@ -12,6 +12,29 @@ let requestedSampleRate = 22050;
 let requestedBitDepth = 16;
 let currentSegmentAudio = null;
 
+function pickSupportedRecordingMimeType() {
+  if (typeof MediaRecorder === "undefined" || !MediaRecorder.isTypeSupported) {
+    return null;
+  }
+
+  const candidates = [
+    "audio/webm;codecs=opus",
+    "audio/webm",
+    "audio/mp4",
+    "audio/mp4;codecs=mp4a.40.2",
+    "audio/aac",
+    "audio/wav"
+  ];
+
+  for (const mimeType of candidates) {
+    if (MediaRecorder.isTypeSupported(mimeType)) {
+      return mimeType;
+    }
+  }
+
+  return null;
+}
+
 function audioBufferToMono(audioBuffer) {
   const channels = audioBuffer.numberOfChannels;
   const length = audioBuffer.length;
@@ -175,12 +198,21 @@ async function startRecording() {
       }
     });
 
-    const options = MediaRecorder.isTypeSupported("audio/wav")
-      ? { mimeType: "audio/wav" }
-      : { mimeType: "audio/webm;codecs=opus" };
-    options.audioBitsPerSecond = codage === 32 ? 1411200 : 705600;
+    const preferredMimeType = pickSupportedRecordingMimeType();
+    const options = {
+      audioBitsPerSecond: codage === 32 ? 1411200 : 705600
+    };
 
-    mediaRecorder = new MediaRecorder(stream, options);
+    if (preferredMimeType) {
+      options.mimeType = preferredMimeType;
+    }
+
+    try {
+      mediaRecorder = new MediaRecorder(stream, options);
+    } catch (mimeError) {
+      mediaRecorder = new MediaRecorder(stream);
+    }
+
     audioChunks = [];
     isRecording = true;
 
@@ -193,8 +225,9 @@ async function startRecording() {
       stream.getTracks().forEach(track => track.stop());
 
       try {
+        const chunkType = audioChunks[0]?.type;
         const sourceBlob = new Blob(audioChunks, {
-          type: mediaRecorder.mimeType || "audio/webm"
+          type: mediaRecorder.mimeType || chunkType || "audio/webm"
         });
         recordedBlob = await convertBlobToWav(
           sourceBlob,
