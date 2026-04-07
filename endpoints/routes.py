@@ -10,6 +10,11 @@ import librosa
 from pathlib import Path
 import io
 import errno
+import time
+import matplotlib
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 
 api_bp = Blueprint("api", __name__)
 
@@ -34,7 +39,9 @@ filtering_session = {
     "original_audio": None,
     "filtered_audio": None,
     "sample_rate": None,
-    "filename": None
+    "filename": None,
+    "plots": {},
+    "plot_version": 0
 }
 
 
@@ -74,6 +81,111 @@ def _compute_fft(audio_data, sample_rate):
     freqs = np.fft.fftfreq(len(audio_data), d=1.0 / sample_rate)
     amplitudes = np.abs(spectrum)
     return freqs, amplitudes, spectrum
+
+
+def _render_plot_png(series, title, x_label, y_label):
+    """Génère un graphique PNG en mémoire à partir d'une ou plusieurs séries."""
+    figure, axis = plt.subplots(figsize=(10, 3.2), dpi=120)
+    figure.patch.set_facecolor("#111827")
+    axis.set_facecolor("#111827")
+
+    for item in series:
+        axis.plot(
+            item["x"],
+            item["y"],
+            color=item.get("color", "#60a5fa"),
+            linewidth=1.3,
+            label=item.get("label", "")
+        )
+
+    axis.set_title(title, color="#e5e7eb", fontsize=11)
+    axis.set_xlabel(x_label, color="#d1d5db", fontsize=9)
+    axis.set_ylabel(y_label, color="#d1d5db", fontsize=9)
+    axis.tick_params(colors="#9ca3af", labelsize=8)
+    axis.grid(color="#374151", alpha=0.35, linewidth=0.8)
+
+    for spine in axis.spines.values():
+        spine.set_color("#374151")
+
+    labels = [item.get("label", "") for item in series if item.get("label")]
+    if labels:
+        legend = axis.legend(facecolor="#111827", edgecolor="#374151", fontsize=8)
+        for text in legend.get_texts():
+            text.set_color("#e5e7eb")
+
+    buffer = io.BytesIO()
+    figure.tight_layout()
+    figure.savefig(buffer, format="png", facecolor=figure.get_facecolor())
+    plt.close(figure)
+    buffer.seek(0)
+    return buffer.getvalue()
+
+
+def _update_filter_plots(original_audio, filtered_audio, sample_rate):
+    """Met à jour les graphes temporels/fréquentiels de la session de filtrage."""
+    time_axis = np.arange(len(original_audio), dtype=np.float32) / float(sample_rate)
+    time_before_x, time_before_y = _downsample_for_plot(time_axis, original_audio)
+
+    time_series = [{
+        "x": time_before_x,
+        "y": time_before_y,
+        "color": "#60a5fa",
+        "label": "Avant filtrage"
+    }]
+
+    freqs_before, amps_before, _ = _compute_fft(original_audio, sample_rate)
+    positive_before = freqs_before >= 0
+    freq_before_x, freq_before_y = _downsample_for_plot(
+        freqs_before[positive_before],
+        amps_before[positive_before]
+    )
+    freq_series = [{
+        "x": freq_before_x,
+        "y": freq_before_y,
+        "color": "#f59e0b",
+        "label": "Avant filtrage"
+    }]
+
+    if filtered_audio is not None:
+        time_after_x, time_after_y = _downsample_for_plot(time_axis, filtered_audio)
+        time_series.append({
+            "x": time_after_x,
+            "y": time_after_y,
+            "color": "#34d399",
+            "label": "Après filtrage"
+        })
+
+        freqs_after, amps_after, _ = _compute_fft(filtered_audio, sample_rate)
+        positive_after = freqs_after >= 0
+        freq_after_x, freq_after_y = _downsample_for_plot(
+            freqs_after[positive_after],
+            amps_after[positive_after]
+        )
+        freq_series.append({
+            "x": freq_after_x,
+            "y": freq_after_y,
+            "color": "#ef4444",
+            "label": "Après filtrage"
+        })
+
+    time_plot = _render_plot_png(
+        time_series,
+        "Signal temporel x(t)",
+        "Temps (s)",
+        "Amplitude"
+    )
+    freq_plot = _render_plot_png(
+        freq_series,
+        "Spectre d'amplitude |X(f)|",
+        "Fréquence (Hz)",
+        "Amplitude"
+    )
+
+    filtering_session["plots"] = {
+        "time-domain": time_plot,
+        "frequency-domain": freq_plot
+    }
+    filtering_session["plot_version"] = int(time.time() * 1000)
 
 
 def _get_audio_storage_root():
@@ -546,7 +658,7 @@ def download_recording():
 
 @api_bp.post("/api/upload-audio")
 def upload_audio_for_filtering():
-    """Charge un fichier audio, le convertit en mono float et renvoie les données de tracé initiales."""
+    """Charge un fichier audio et prépare les graphes générés côté backend."""
     try:
         if "audio_file" not in request.files:
             return jsonify({"error": "Aucun fichier audio reçu"}), 400
@@ -571,20 +683,16 @@ def upload_audio_for_filtering():
             "filename": filename
         })
 
-        time_axis = np.arange(len(audio_float), dtype=np.float32) / float(sample_rate)
-        plot_t, plot_x = _downsample_for_plot(time_axis, audio_float)
-
-        freqs, amps, _ = _compute_fft(audio_float, sample_rate)
-        positive = freqs >= 0
-        plot_f, plot_mag = _downsample_for_plot(freqs[positive], amps[positive])
+        _update_filter_plots(audio_float, None, sample_rate)
 
         return jsonify({
             "message": "Fichier chargé avec succès",
             "filename": filename,
             "sample_rate": int(sample_rate),
             "duration": round(len(audio_float) / float(sample_rate), 3),
-            "time_before": {"t": plot_t, "x": plot_x},
-            "freq_before": {"f": plot_f, "mag": plot_mag}
+            "time_plot_url": "/api/filter-plot/time-domain",
+            "frequency_plot_url": "/api/filter-plot/frequency-domain",
+            "plot_version": filtering_session.get("plot_version", 0)
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 400
@@ -625,24 +733,16 @@ def apply_rectangular_filter():
 
         filtering_session["filtered_audio"] = filtered_audio
 
-        time_axis = np.arange(len(original_audio), dtype=np.float32) / float(sample_rate)
-        t_before, x_before = _downsample_for_plot(time_axis, original_audio)
-        t_after, x_after = _downsample_for_plot(time_axis, filtered_audio)
-
-        filtered_amp = np.abs(filtered_spectrum)
-        positive = freqs >= 0
-        f_before, mag_before = _downsample_for_plot(freqs[positive], original_amp[positive])
-        f_after, mag_after = _downsample_for_plot(freqs[positive], filtered_amp[positive])
+        _update_filter_plots(original_audio, filtered_audio, sample_rate)
 
         return jsonify({
             "message": "Filtrage appliqué avec succès",
             "filter_type": filter_type,
             "fmin": fmin,
             "fmax": fmax,
-            "time_before": {"t": t_before, "x": x_before},
-            "time_after": {"t": t_after, "x": x_after},
-            "freq_before": {"f": f_before, "mag": mag_before},
-            "freq_after": {"f": f_after, "mag": mag_after},
+            "time_plot_url": "/api/filter-plot/time-domain",
+            "frequency_plot_url": "/api/filter-plot/frequency-domain",
+            "plot_version": filtering_session.get("plot_version", 0),
             "audio_url": "/api/download-filtered-audio"
         })
     except Exception as e:
@@ -671,5 +771,22 @@ def download_filtered_audio():
             as_attachment=True,
             download_name=f"{stem}_filtre.wav"
         )
+    except Exception as e:
+        return f"Erreur: {str(e)}", 400
+
+
+@api_bp.get("/api/filter-plot/<plot_name>")
+def download_filter_plot(plot_name):
+    """Retourne un graphique PNG généré côté backend pour la Partie 2."""
+    try:
+        plots = filtering_session.get("plots") or {}
+        plot_bytes = plots.get(plot_name)
+
+        if plot_bytes is None:
+            return "Graphique non disponible", 404
+
+        buffer = io.BytesIO(plot_bytes)
+        buffer.seek(0)
+        return send_file(buffer, mimetype="image/png", as_attachment=False)
     except Exception as e:
         return f"Erreur: {str(e)}", 400

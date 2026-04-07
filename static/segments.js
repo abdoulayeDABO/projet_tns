@@ -11,6 +11,10 @@ function populateSegmentsTable() {
       const segments = data.segments;
       const tbody = document.getElementById("segments-table");
 
+      if (!tbody) {
+        return;
+      }
+
       if (segments.length === 0) {
         tbody.innerHTML = `
                     <tr class="border-b border-slate-700 hover:bg-slate-700/50 transition">
