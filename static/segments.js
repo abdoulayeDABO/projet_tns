@@ -1,93 +1,127 @@
-/**
- * Script pour gérer les segments détectés
- */
+let segmentsDurationChart = null;
 
-let previewSegmentAudio = null;
+async function refreshAudioFiles() {
+  const select = document.getElementById('audioFileSelect');
+  if (!select) {
+    return;
+  }
+  const response = await fetch('/api/audio-files');
+  const payload = await response.json();
+  if (!response.ok || !payload.success) {
+    throw new Error(payload.error || 'Impossible de lister les fichiers audio');
+  }
 
-function populateSegmentsTable() {
-  fetch("/api/get-segments")
-    .then(response => response.json())
-    .then(data => {
-      const segments = data.segments;
-      const tbody = document.getElementById("segments-table");
-
-      if (!tbody) {
-        return;
-      }
-
-      if (segments.length === 0) {
-        tbody.innerHTML = `
-                    <tr class="border-b border-slate-700 hover:bg-slate-700/50 transition">
-                        <td colspan="5" class="py-8 px-4 text-center text-slate-500">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-inbox mx-auto mb-2 opacity-50">
-                                <polyline points="22 12 18 12 15 21 9 21 6 12 2 12"></polyline>
-                            </svg>
-                            <p class="font-semibold">Aucun segment détecté</p>
-                            <p class="text-xs text-slate-600 mt-1">Enregistrez et segmentez pour voir les résultats</p>
-                        </td>
-                    </tr>
-                `;
-        return;
-      }
-
-      // Remplir le tableau avec les segments
-      tbody.innerHTML = segments
-        .map(
-          (segment, index) => `
-                <tr class="border-b border-slate-700 hover:bg-slate-700/50 transition">
-                    <td class="py-3 px-4 text-slate-300">${index + 1}</td>
-                    <td class="py-3 px-4 text-slate-300">${segment.debut.toFixed(
-                      3
-                    )}s</td>
-                    <td class="py-3 px-4 text-slate-300">${segment.fin.toFixed(
-                      3
-                    )}s</td>
-                    <td class="py-3 px-4 text-slate-300">${segment.duree_ms.toFixed(
-                      1
-                    )}ms</td>
-                    <td class="py-3 px-4">
-                        <div class="flex gap-2">
-                            <button onclick="previewSegment(${segment.debut}, ${segment.fin})" class="px-3 py-1 bg-blue-600 hover:bg-blue-500 rounded text-xs text-white transition">
-                                Écouter
-                            </button>
-                          <button onclick="stopPreviewSegmentPlayback()" class="px-3 py-1 bg-amber-600 hover:bg-amber-500 rounded text-xs text-white transition">
-                          Stop
-                        </button>
-                            <button onclick="downloadSegment(${segment.debut}, ${segment.fin}, ${index +
-            1})" class="px-3 py-1 bg-green-600 hover:bg-green-500 rounded text-xs text-white transition">
-                                Télécharger
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-            `
-        )
-        .join("");
-    })
-    .catch(error => console.error("Erreur:", error));
+  select.innerHTML = '';
+  payload.files.forEach(file => {
+    const option = document.createElement('option');
+    option.value = file.relative_path;
+    option.textContent = `${file.locuteur}/${file.session} — ${file.name}`;
+    select.appendChild(option);
+  });
 }
 
-function previewSegment(start, end) {
-  stopPreviewSegmentPlayback();
-  alert(`Écouter le segment de ${start.toFixed(3)}s à ${end.toFixed(3)}s`);
-  // À implémenter avec Web Audio API
-}
-
-function stopPreviewSegmentPlayback() {
-  if (!previewSegmentAudio) {
+function renderSegmentsTable(segments) {
+  const tbody = document.querySelector('#segmentsTable tbody');
+  if (!tbody) {
     return;
   }
 
-  previewSegmentAudio.pause();
-  previewSegmentAudio.currentTime = 0;
-  previewSegmentAudio = null;
+  if (!segments.length) {
+    tbody.innerHTML = '<tr><td colspan="7">Aucun segment détecté.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = segments.map((seg, index) => `
+    <tr>
+      <td>${index + 1}</td>
+      <td>${seg.filename}</td>
+      <td>${seg.duration_ms} ms</td>
+      <td>${seg.start_ms} ms</td>
+      <td>${seg.end_ms} ms</td>
+      <td><audio controls src="${seg.url}"></audio></td>
+      <td><a href="${seg.url}" download="${seg.filename}">Télécharger</a></td>
+    </tr>
+  `).join('');
 }
 
-function downloadSegment(start, end, index) {
-  alert(
-    `Télécharger le segment ${index} (${start.toFixed(3)}s - ${end.toFixed(
-      3
-    )}s)`
-  );
-  // À implémenter
+function renderSegmentsDurationChart(segments) {
+  if (typeof Chart === 'undefined') {
+    window.showToast('Graphique indisponible temporairement (Chart.js non chargé).', 'warning');
+    return;
+  }
+  const canvas = document.getElementById('segmentsDurationChart');
+  if (!canvas) {
+    return;
+  }
+
+  const labels = segments.map((_, index) => `S${index + 1}`);
+  const durations = segments.map(seg => seg.duration_ms);
+  if (segmentsDurationChart) {
+    segmentsDurationChart.destroy();
+  }
+  segmentsDurationChart = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{ label: 'Durée (ms)', data: durations, backgroundColor: '#9b59b6' }]
+    },
+    options: window.darkChartDefaults
+  });
 }
+
+async function runSegmentation() {
+  const progress = document.getElementById('segmentProgress');
+  try {
+    const filepath = document.getElementById('audioFileSelect')?.value;
+    const threshold = Number(document.getElementById('silenceThresh')?.value || 0.02);
+    const minSilenceMs = Number(document.getElementById('minSilenceDuration')?.value || 300);
+
+    if (!filepath) {
+      window.showToast('Aucun fichier sélectionné pour la segmentation.', 'warning');
+      return;
+    }
+
+    progress.style.width = '35%';
+    const response = await fetch('/api/segment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filepath, threshold, min_silence_ms: minSilenceMs })
+    });
+    const payload = await response.json();
+    progress.style.width = '80%';
+
+    if (!response.ok || !payload.success) {
+      throw new Error(payload.error || 'Erreur de segmentation');
+    }
+
+    renderSegmentsTable(payload.segments);
+    renderSegmentsDurationChart(payload.segments);
+    window.showToast(`${payload.segments.length} segment(s) généré(s).`, 'success');
+  } catch (error) {
+    window.showToast(error.message, 'error');
+  } finally {
+    progress.style.width = '100%';
+    window.setTimeout(() => {
+      progress.style.width = '0%';
+    }, 300);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!document.getElementById('btnSegment')) {
+    return;
+  }
+  const thresholdInput = document.getElementById('silenceThresh');
+  const thresholdValue = document.getElementById('threshValue');
+  thresholdInput.addEventListener('input', () => {
+    thresholdValue.textContent = thresholdInput.value;
+  });
+
+  document.getElementById('btnSegment').addEventListener('click', runSegmentation);
+  window.refreshAudioFiles = refreshAudioFiles;
+  try {
+    await refreshAudioFiles();
+  } catch (error) {
+    window.showToast(error.message, 'error');
+  }
+});

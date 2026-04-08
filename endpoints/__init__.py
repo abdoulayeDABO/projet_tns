@@ -1,3 +1,3 @@
-from .routes import api_bp
+from .routes import bp, api_bp
 
-__all__ = ["api_bp"]
+__all__ = ["bp", "api_bp"]

@@ -1,70 +1,20 @@
 {% extends "base.html" %}
 
-{% block title %}App Web de Traitement Numérique - Accueil{% endblock %}
+{% block title %}Accueil — TNS{% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto px-6 py-16">
-    <!-- Header -->
-    <div class="mb-12">
-        <h1 class="text-3xl font-bold text-gray-100 mb-2">Choisissez une option</h1>
-        <p class="text-gray-400">Sélectionnez une fonctionnalité pour commencer</p>
-    </div>
+<h1 class="page-title">Application TNS — ESP/UCAD</h1>
+<p class="page-subtitle">Choisissez un module pour démarrer vos travaux pratiques.</p>
 
-    <!-- Grid of cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <!-- Card 1: Recording & Segmentation -->
-        <a href="/numerisation" class="card p-8 hover:shadow-lg cursor-pointer group">
-            <div class="flex items-start gap-4 mb-4">
-                <div class="w-12 h-12 bg-gray-800 rounded-lg flex items-center justify-center group-hover:bg-gray-700 transition">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-300">
-                        <path d="M12 19v3M19 10v2a7 7 0 0 1-14 0v-2"></path>
-                        <rect x="9" y="2" width="6" height="13" rx="3"></rect>
-                    </svg>
-                </div>
-                <div>
-                    <h2 class="text-xl font-semibold text-gray-100">Enregistrement</h2>
-                    <p class="text-sm text-gray-400">& Segmentation</p>
-                </div>
-            </div>
-            <p class="text-gray-400 text-sm mb-4">
-                Enregistrez votre voix directement depuis le navigateur et segmentez automatiquement votre signal par détection de silence.
-            </p>
-            <div class="flex items-center gap-2 text-gray-300 font-medium text-sm group-hover:gap-3 transition-all">
-                <span>Accéder</span>
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                    <polyline points="12 5 19 12 12 19"></polyline>
-                </svg>
-            </div>
-        </a>
+<div class="grid-2">
+  <a class="card" href="/numerisation" style="text-decoration:none;color:inherit;">
+    <div class="card-header"><i class="bi bi-mic"></i><h3>Numérisation & Segmentation</h3></div>
+    <p style="color:var(--clr-surface-a50);">Enregistrez au micro, sauvegardez en WAV puis segmentez automatiquement les portions vocales.</p>
+  </a>
 
-        <!-- Card 2: Analysis & Filtering -->
-        <a href="/filtrage" class="card p-8 hover:shadow-lg cursor-pointer group">
-            <div class="flex items-start gap-4 mb-4">
-                <div class="w-12 h-12 bg-gray-800 rounded-lg flex items-center justify-center group-hover:bg-gray-700 transition">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-300">
-                        <path d="M2 12h20M2 6h20M2 18h20"></path>
-                        <circle cx="12" cy="3" r="1"></circle>
-                        <circle cx="19" cy="3" r="1"></circle>
-                        <circle cx="5" cy="3" r="1"></circle>
-                    </svg>
-                </div>
-                <div>
-                    <h2 class="text-xl font-semibold text-gray-100">Analyse</h2>
-                    <p class="text-sm text-gray-400">& Filtrage</p>
-                </div>
-            </div>
-            <p class="text-gray-400 text-sm mb-4">
-                Chargez un fichier audio, visualisez son spectre via FFT et appliquez un filtre rectangulaire pour nettoyer votre signal.
-            </p>
-            <div class="flex items-center gap-2 text-gray-300 font-medium text-sm group-hover:gap-3 transition-all">
-                <span>Accéder</span>
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                    <polyline points="12 5 19 12 12 19"></polyline>
-                </svg>
-            </div>
-        </a>
-    </div>
+  <a class="card" href="/filtrage" style="text-decoration:none;color:inherit;">
+    <div class="card-header"><i class="bi bi-graph-up"></i><h3>Analyse FFT & Filtrage</h3></div>
+    <p style="color:var(--clr-surface-a50);">Chargez un audio, visualisez son spectre et appliquez un filtre rectangulaire passe/coupe-bande.</p>
+  </a>
 </div>
 {% endblock %}

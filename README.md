@@ -1,187 +1,48 @@
-# Flask + HTMX + Tailwind CSS - Application Web
+# TNS — ESP/UCAD (Flask)
 
-Un starter combinant Flask, HTMX et Tailwind CSS avec SQLAlchemy pour la gestion de base de données.
+Application web de **Traitement Numérique du Signal** avec 2 modules :
 
-## 🚀 Démarrage Rapide
+- **Numérisation & Segmentation vocale** (`/numerisation`)
+- **Analyse FFT & Filtrage fréquentiel** (`/filtrage`)
 
-### Développement Local
+## Stack
 
-1. **Cloner le projet**
+- Backend: `Flask` + `numpy` + `scipy` + `librosa` + `pydub`
+- Frontend: HTML/CSS/JS vanilla
+- Graphiques: `Chart.js 4.5.0`
+- Icônes: `Bootstrap Icons`
+
+## Lancer en local
+
 ```bash
-cd /path/to/project
-```
-
-2. **Installer les dépendances**
-```bash
-uv sync
-```
-
-3. **Configurer l'environnement**
-```bash
-# Modifier .env si nécessaire
-cat .env
-```
-
-4. **Lancer l'application**
-```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 python main.py
 ```
 
-L'application sera accessible à `http://localhost:8000`
+Application disponible sur `http://localhost:5000`.
 
-## 🐳 Déploiement avec Docker
+## Endpoints principaux
 
-### Build et lancer le conteneur
+- `POST /api/save-recording`
+- `GET /api/audio-files`
+- `POST /api/segment`
+- `POST /api/analyze`
+- `POST /api/filter`
+- `GET /audio/<path:filepath>`
+- `GET /download/<filename>`
 
-```bash
-# Build l'image Docker
-docker build -t flask-app .
+## Arborescence audio
 
-# Lancer le conteneur
-docker run -p 8000:8000 -e SECRET_KEY=your-secret-key flask-app
-```
+- Enregistrements: `database/locuteur_XX/session_XX/enreg_XXX_XXkHz_XXb.wav`
+- Segments: `segments/locuteur_XX/session_XX/enreg_XXX/seg_XXX.wav`
+- Fichiers temporaires: `temp_uploads/`
+- Sorties filtrées: `filtered_outputs/`
 
-### Avec Docker Compose
+## Notes
 
-```bash
-# Lancer l'application complète
-docker-compose up -d
-
-# Voir les logs
-docker-compose logs -f
-
-# Arrêter l'application
-docker-compose down
-```
-
-## 📁 Structure du Projet
-
-```
-.
-├── main.py              # Point d'entrée de l'application
-├── asgi.py              # Wrapper ASGI pour Uvicorn
-├── Dockerfile           # Configuration Docker multi-stage
-├── docker-compose.yml   # Orchestration Docker
-├── .dockerignore         # Fichiers à exclure du build Docker
-├── .env                 # Variables d'environnement
-├── pyproject.toml       # Dépendances du projet
-│
-├── core/                # Module core
-│   ├── __init__.py
-│   ├── database.py      # Configuration SQLAlchemy
-│   └── models.py        # Modèles de données (User, Item)
-│
-├── endpoints/           # Routes API
-│   ├── __init__.py
-│   └── routes.py        # Endpoints HTMX et API
-│
-├── template/            # Templates Jinja2
-│   ├── base.html        # Template de base
-│   ├── index.html       # Page d'accueil
-│   ├── pages/
-│   │   ├── about.html
-│   │   └── dashboard.html
-│   └── components/
-│       ├── alert.html
-│       ├── button.html
-│       └── card.html
-│
-├── static/              # Fichiers statiques (CSS, JS, images)
-└── public/              # Fichiers publics
-```
-
-## 🗄️ Base de Données
-
-### Modèles disponibles
-
-- **User** - Modèle utilisateur
-  - username (unique)
-  - email (unique)
-  - password
-  - is_active
-  - created_at, updated_at
-
-- **Item** - Modèle élément/produit
-  - name
-  - description
-  - value
-  - user_id (clé étrangère)
-  - created_at, updated_at
-
-### Initialisation de la BD
-
-La base de données se crée automatiquement au démarrage de l'application.
-
-Pour réinitialiser :
-```bash
-rm app.db
-python main.py
-```
-
-## 🌐 Routes Disponibles
-
-- `/` - Page d'accueil
-- `/dashboard` - Tableau de bord
-- `/about` - À propos
-- `/api/data` - Données JSON
-- `/api/items/<id>` - Élément spécifique
-- `/api/demo` - Démo HTMX
-- `/api/activity` - Activité récente
-- `/api/greeting` - Message de salutation
-
-## 📊 Variables d'Environnement
-
-```env
-FLASK_APP=main.py
-FLASK_ENV=development
-FLASK_DEBUG=True
-PORT=8000
-DATABASE_URL=sqlite:///app.db
-API_BASE_URL=http://localhost:8000/api
-BASE_URL=http://localhost:8000
-SECRET_KEY=your-secret-key
-AUDIO_STORAGE_DIR=/tmp/tns_data
-```
-
-- `AUDIO_STORAGE_DIR` doit pointer vers un dossier writable en production (volume monté recommandé).
-
-### Déploiement Vercel (important)
-
-- Le filesystem du projet est en lecture seule sur Vercel.
-- L'application bascule automatiquement sur `/tmp/tns_data` si `AUDIO_STORAGE_DIR` n'est pas writable.
-- Pour éviter l'erreur `Read-only file system`, configurez `AUDIO_STORAGE_DIR=/tmp/tns_data` dans les variables d'environnement Vercel.
-
-Format de nommage des enregistrements:
-
-- `enreg_{NNN}_{FREQUENCE}kHz_{CODAGE}b.wav`
-- Exemples: `enreg_001_16kHz_16b.wav`, `enreg_002_22_05kHz_32b.wav`, `enreg_003_44_1kHz_16b.wav`
-
-## 🔧 Technologies
-
-- **Backend** : Flask 3.1+
-- **Frontend** : HTMX, Tailwind CSS
-- **Database** : SQLAlchemy, SQLite
-- **Server** : Gunicorn
-- **Containerization** : Docker
-- **Package Manager** : UV (uv)
-
-## 📝 Notes
-
-- L'application utilise SQLite par défaut (production : PostgreSQL recommandé)
-- Gunicorn avec 4 workers en production
-- Health check configuré toutes les 30 secondes
-- Image Docker multi-stage optimisée
-
-## 🚢 Production
-
-Pour le déploiement en production :
-
-1. Mettre à jour les variables d'environnement
-2. Générer une nouvelle `SECRET_KEY`
-3. Configurer une base de données PostgreSQL
-4. Utiliser un reverse proxy (Nginx)
-5. Activer HTTPS avec Let's Encrypt
-
-## 📞 Support
-
-Pour plus d'informations, consultez la documentation Flask et Tailwind CSS officielles.
+- Seules les fréquences `16000`, `22050`, `44100` sont autorisées.
+- Seuls les codages `16` et `32` bits sont autorisés.
+- Le filtrage est **rectangulaire uniquement** (`passband` / `stopband`).
+- Les formats non WAV sont convertis automatiquement en WAV côté backend.

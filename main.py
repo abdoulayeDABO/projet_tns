@@ -1,105 +1,42 @@
+"""Point d'entrée Flask de l'application TNS."""
+
+from __future__ import annotations
+
 import os
 from pathlib import Path
-from dotenv import load_dotenv
-from flask import Flask, render_template
-from endpoints import api_bp
-from core.database import db, init_db
 
-# Charger les variables d'environnement
-load_dotenv()
+from flask import Flask
 
-app = Flask(__name__, template_folder='template', instance_path=str(Path(__file__).parent / 'instance'))
-
-# Créer le répertoire instance s'il n'existe pas
-os.makedirs(app.instance_path, exist_ok=True)
-
-# Configuration depuis les variables d'environnement
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key')
-app.config['API_BASE_URL'] = os.getenv('API_BASE_URL', 'http://localhost:5000/api')
-app.config['BASE_URL'] = os.getenv('BASE_URL', 'http://localhost:5000')
-flask_env = os.getenv('FLASK_ENV', 'development').lower()
-default_audio_storage = '/tmp/tns_data' if flask_env == 'production' else 'database'
-app.config['AUDIO_STORAGE_DIR'] = default_audio_storage
-
-# Configuration de la base de données SQLite
-db_path = Path(app.instance_path) / 'tns.db'
-DATABASE_URL = f'sqlite:///{db_path}'
-app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-# Port depuis les variables d'environnement
-PORT = int(os.getenv('PORT', 5000))
-
-# Initialiser la base de données
-db.init_app(app)
-
-# Rendre les variables globales disponibles dans les templates
-@app.context_processor
-def inject_config():
-    return {
-        'API_BASE_URL': app.config['API_BASE_URL'],
-        'BASE_URL': app.config['BASE_URL'],
-    }
-
-# Créer les tables au démarrage
-with app.app_context():
-    db.create_all()
-
-app.register_blueprint(api_bp)
+from core.database import init_db
+from endpoints.routes import bp
 
 
-FREQUENCES = [16, 22.05, 44.1]  # en kHz
-CODAGE = [16, 32]  # en bits
-FORMAT = ["WAV"]
-DUREE_MIN = 1  # en secondes
-DUREE_MAX = 300  # en secondes
+BASE_DIR = Path(__file__).resolve().parent
+INSTANCE_DIR = BASE_DIR / "instance"
+DATABASE_PATH = INSTANCE_DIR / "app.db"
 
-# Paramètres de segmentation
-SEUIL_AMPLITUDE_MIN = 0  # %
-SEUIL_AMPLITUDE_MAX = 100  # %
-SEUIL_AMPLITUDE_DEFAULT = 20  # %
-SILENCE_DUREE_MIN = 50  # ms
-SILENCE_DUREE_MAX = 2000  # ms
-SILENCE_DUREE_DEFAULT = 500  # ms
+app = Flask(__name__, template_folder="template", static_folder="static")
+app.config["MAX_CONTENT_LENGTH"] = 100 * 1024 * 1024
+app.config["UPLOAD_TEMP_FOLDER"] = str(BASE_DIR / "temp_uploads")
+app.config["DATABASE_FOLDER"] = str(BASE_DIR / "database")
+app.config["SEGMENTS_FOLDER"] = str(BASE_DIR / "segments")
+app.config["FILTERED_FOLDER"] = str(BASE_DIR / "filtered_outputs")
+app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{DATABASE_PATH}"
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.secret_key = "tns-esp-ucad-2025"
 
+for folder in [
+    BASE_DIR / "database",
+    BASE_DIR / "segments",
+    BASE_DIR / "temp_uploads",
+    BASE_DIR / "filtered_outputs",
+    INSTANCE_DIR,
+]:
+    os.makedirs(folder, exist_ok=True)
 
-@app.get("/")
-def read_root():
-    return render_template('index.html',
-        frequences=app.config.get('FREQUENCES', FREQUENCES),
-        codages=app.config.get('CODAGE', CODAGE),
-        formats=app.config.get('FORMAT', FORMAT),
-        seuil_amplitude_min=SEUIL_AMPLITUDE_MIN,
-        seuil_amplitude_max=SEUIL_AMPLITUDE_MAX,
-        seuil_amplitude_default=SEUIL_AMPLITUDE_DEFAULT,
-        silence_duree_min=SILENCE_DUREE_MIN,
-        silence_duree_max=SILENCE_DUREE_MAX,
-        silence_duree_default=SILENCE_DUREE_DEFAULT
-    )
+app.register_blueprint(bp)
+init_db(app)
 
 
-@app.get("/dashboard")
-def dashboard():
-    return render_template('pages/dashboard.html')
-
-
-@app.get("/numerisation")
-def numerisation():
-    return render_template('pages/numerisation.html',
-        frequences=app.config.get('FREQUENCES', FREQUENCES),
-        codages=app.config.get('CODAGE', CODAGE),
-    )
-
-
-@app.get("/filtrage")
-def filtrage():
-    return render_template('pages/filtrage.html')
-
-
-@app.get("/about")
-def about():
-    return render_template('pages/about.html')
-
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=PORT, debug=True)
+if __name__ == "__main__":
+    app.run(debug=True, host="0.0.0.0", port=5000)
