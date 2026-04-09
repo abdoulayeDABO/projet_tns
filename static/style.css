@@ -412,22 +412,28 @@ button.is-loading {
 }
 
 .sample-rate-inputs {
-  gap: .45rem;
+  gap: .4rem;
+  flex-wrap: nowrap;
+}
+
+.sample-rate-inputs .radio-option {
+  min-width: 0;
 }
 
 .sample-rate-inputs .radio-tile {
   min-height: 42px;
-  padding: .58rem .45rem;
+  padding: .56rem .4rem;
   flex-direction: row;
 }
 
 .sample-rate-inputs .radio-label {
-  font-size: .88rem;
-  line-height: 1.1;
+  font-size: .84rem;
+  line-height: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   text-align: center;
+  white-space: nowrap;
 }
 
 .bitdepth-radio-inputs .radio-tile {
@@ -602,6 +608,23 @@ button.is-loading {
 
 .capture-card .field-block {
   margin-bottom: .72rem;
+}
+
+.capture-card .field-row {
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, .7fr);
+  align-items: start;
+}
+
+.capture-card .field-row > .field-block:last-child {
+  width: 100%;
+  max-width: none;
+  justify-self: stretch;
+}
+
+.capture-card #duration {
+  font-size: .9rem;
+  padding: .56rem .68rem;
+  min-height: 42px;
 }
 
 .capture-card input,
