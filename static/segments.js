@@ -1,5 +1,28 @@
 let segmentsDurationChart = null;
 
+function toggleButtonSpinner(button, isLoading, loadingLabel) {
+  if (!button) {
+    return;
+  }
+
+  if (isLoading) {
+    if (!button.dataset.originalHtml) {
+      button.dataset.originalHtml = button.innerHTML;
+    }
+    button.innerHTML = `<span class="btn-spinner" aria-hidden="true"></span><span>${loadingLabel}</span>`;
+    button.classList.add('is-loading');
+    button.setAttribute('aria-busy', 'true');
+    button.disabled = true;
+    return;
+  }
+
+  if (button.dataset.originalHtml) {
+    button.innerHTML = button.dataset.originalHtml;
+  }
+  button.classList.remove('is-loading');
+  button.removeAttribute('aria-busy');
+}
+
 async function refreshAudioFiles() {
   const select = document.getElementById('audioFileSelect');
   if (!select) {
@@ -69,7 +92,8 @@ function renderSegmentsDurationChart(segments) {
 }
 
 async function runSegmentation() {
-  const progress = document.getElementById('segmentProgress');
+  const btnSegment = document.getElementById('btnSegment');
+  toggleButtonSpinner(btnSegment, true, 'Segmentation...');
   try {
     const filepath = document.getElementById('audioFileSelect')?.value;
     const threshold = Number(document.getElementById('silenceThresh')?.value || 0.02);
@@ -80,14 +104,12 @@ async function runSegmentation() {
       return;
     }
 
-    progress.style.width = '35%';
     const response = await fetch('/api/segment', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ filepath, threshold, min_silence_ms: minSilenceMs })
     });
     const payload = await response.json();
-    progress.style.width = '80%';
 
     if (!response.ok || !payload.success) {
       throw new Error(payload.error || 'Erreur de segmentation');
@@ -99,10 +121,8 @@ async function runSegmentation() {
   } catch (error) {
     window.showToast(error.message, 'error');
   } finally {
-    progress.style.width = '100%';
-    window.setTimeout(() => {
-      progress.style.width = '0%';
-    }, 300);
+    toggleButtonSpinner(btnSegment, false);
+    btnSegment.disabled = false;
   }
 }
 

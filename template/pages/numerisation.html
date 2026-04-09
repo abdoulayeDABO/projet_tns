@@ -10,24 +10,44 @@
 </section>
 
 <div class="grid-2">
-  <section class="card">
+  <section class="card capture-card">
     <div class="card-header"><i class="bi bi-mic-fill"></i><h3>Capture & Réglages</h3></div>
 
-    <label for="sampleRate">Fréquence d'échantillonnage</label>
-    <select id="sampleRate" name="sample_rate">
-      <option value="16000">16 kHz</option>
-      <option value="22050">22,05 kHz</option>
-      <option value="44100">44,1 kHz</option>
-    </select>
+    <div class="field-row">
+      <div class="field-block">
+        <label for="sampleRate">Fréquence d'échantillonnage</label>
+        <select id="sampleRate" name="sample_rate">
+          <option value="16000">16 kHz</option>
+          <option value="22050">22,05 kHz</option>
+          <option value="44100">44,1 kHz</option>
+        </select>
+      </div>
 
-    <label>Codage bits</label>
-    <div class="radio-group">
-      <label class="radio-card"><input type="radio" name="bit_depth" value="16" checked>16 bits</label>
-      <label class="radio-card"><input type="radio" name="bit_depth" value="32">32 bits</label>
+      <div class="field-block">
+        <label for="duration">Durée (secondes)</label>
+        <input type="number" id="duration" min="1" max="300" value="5">
+      </div>
     </div>
 
-    <label for="duration">Durée (secondes)</label>
-    <input type="number" id="duration" min="1" max="300" value="5">
+    <div class="field-block">
+      <label>Codage bits</label>
+      <div class="radio-inputs bitdepth-radio-inputs">
+        <label class="radio-option">
+          <input class="radio-input" type="radio" name="bit_depth" value="16" checked>
+          <span class="radio-tile">
+            <span class="radio-icon"><i class="bi bi-hdd-fill"></i></span>
+            <span class="radio-label">16 bits</span>
+          </span>
+        </label>
+        <label class="radio-option">
+          <input class="radio-input" type="radio" name="bit_depth" value="32">
+          <span class="radio-tile">
+            <span class="radio-icon"><i class="bi bi-cpu-fill"></i></span>
+            <span class="radio-label">32 bits</span>
+          </span>
+        </label>
+      </div>
+    </div>
 
     <div class="row form-row-top">
       <button id="btnRecord"><i class="bi bi-mic-fill"></i> Enregistrer</button>
@@ -43,42 +63,51 @@
     <div class="chart-box chart-space-top">
       <canvas id="liveWaveform"></canvas>
     </div>
-
-    <div class="progress progress-space-top"><div class="progress-bar" id="recordProgress"></div></div>
   </section>
 
   <section class="card">
     <div class="card-header"><i class="bi bi-scissors"></i><h3>Segmentation</h3></div>
 
-    <label for="audioFileSelect">Fichier audio</label>
-    <select id="audioFileSelect"></select>
+    <div class="field-block">
+      <label for="audioFileSelect">Fichier audio</label>
+      <select id="audioFileSelect"></select>
+    </div>
 
-    <label for="silenceThresh">Seuil de silence</label>
-    <input type="range" id="silenceThresh" min="0" max="1" step="0.01" value="0.02">
-    <div id="threshValue" style="color:var(--clr-surface-a50);margin:.25rem 0 .65rem;">0.02</div>
+    <div class="field-block">
+      <div class="row row-between threshold-row">
+        <label for="silenceThresh">Seuil de silence</label>
+        <div id="threshValue" class="threshold-value">0.02</div>
+      </div>
+      <input type="range" id="silenceThresh" min="0" max="1" step="0.01" value="0.02">
+    </div>
 
-    <label for="minSilenceDuration">Durée min silence (ms)</label>
-    <input type="number" id="minSilenceDuration" value="300">
+    <div class="field-block">
+      <label for="minSilenceDuration">Durée min silence (ms)</label>
+      <input type="number" id="minSilenceDuration" value="300">
+    </div>
 
     <button id="btnSegment" class="space-top-btn"><i class="bi bi-scissors"></i> Segmenter</button>
-    <div class="progress progress-space-top"><div class="progress-bar" id="segmentProgress"></div></div>
-
-    <div class="table-wrap table-space-top">
-      <table id="segmentsTable">
-        <thead>
-          <tr>
-            <th>#</th><th>Fichier</th><th>Durée</th><th>Début</th><th>Fin</th><th>Écoute</th><th>Télécharger</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-
-    <div class="chart-box chart-space-top">
-      <canvas id="segmentsDurationChart"></canvas>
-    </div>
   </section>
 </div>
+
+<section class="card section-space-top segmentation-results">
+  <div class="card-header"><i class="bi bi-table"></i><h3>Résultats de segmentation</h3></div>
+
+  <div class="table-wrap table-space-top">
+    <table id="segmentsTable">
+      <thead>
+        <tr>
+          <th>#</th><th>Fichier</th><th>Durée</th><th>Début</th><th>Fin</th><th>Écoute</th><th>Télécharger</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="chart-box chart-space-top">
+    <canvas id="segmentsDurationChart"></canvas>
+  </div>
+</section>
 {% endblock %}
 
 {% block extra_scripts %}
