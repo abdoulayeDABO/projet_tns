@@ -10,6 +10,43 @@ let chartMask = null;
 
 let dragStartX = null;
 
+function sanitizeNumericTextInputValue(input, allowDecimal = false) {
+  if (!input) {
+    return;
+  }
+  const allowedPattern = allowDecimal ? /[^0-9.,]/g : /[^0-9]/g;
+  let value = String(input.value || '').replace(allowedPattern, '');
+  if (allowDecimal) {
+    value = value.replace(',', '.');
+    const firstDotIndex = value.indexOf('.');
+    if (firstDotIndex !== -1) {
+      value = value.slice(0, firstDotIndex + 1) + value.slice(firstDotIndex + 1).replace(/\./g, '');
+    }
+  }
+  input.value = value;
+}
+
+function parseNumericInput(inputId, fallbackValue, { min, max, allowDecimal = false } = {}) {
+  const input = document.getElementById(inputId);
+  if (!input) {
+    return fallbackValue;
+  }
+  sanitizeNumericTextInputValue(input, allowDecimal);
+  const raw = String(input.value || '').trim().replace(',', '.');
+  let parsed = allowDecimal ? Number.parseFloat(raw) : Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed)) {
+    parsed = fallbackValue;
+  }
+  if (Number.isFinite(min)) {
+    parsed = Math.max(min, parsed);
+  }
+  if (Number.isFinite(max)) {
+    parsed = Math.min(max, parsed);
+  }
+  input.value = allowDecimal ? String(parsed) : String(Math.round(parsed));
+  return parsed;
+}
+
 function initChartsIfPossible() {
   if (typeof Chart === 'undefined') {
     return;
@@ -196,8 +233,12 @@ async function runFilter() {
       return;
     }
 
-    const fmin = Number(document.getElementById('fmin').value);
-    const fmax = Number(document.getElementById('fmax').value);
+    const fmin = parseNumericInput('fmin', 300, { min: 0, max: 100000 });
+    const fmax = parseNumericInput('fmax', 3400, { min: 0, max: 100000 });
+    if (!Number.isFinite(fmin) || !Number.isFinite(fmax) || fmin >= fmax) {
+      window.showToast('Valeurs invalides: il faut 0 ≤ fmin < fmax.', 'warning');
+      return;
+    }
     const filterType = document.querySelector('input[name="filterType"]:checked').value;
 
     drawMaskChart(originalAnalysis.freq_axis, fmin, fmax, filterType);
@@ -290,5 +331,15 @@ document.addEventListener('DOMContentLoaded', () => {
   initChartsIfPossible();
   document.addEventListener('chartjs-ready', initChartsIfPossible, { once: true });
   setupFFTRangeSelection();
+  const fminInput = document.getElementById('fmin');
+  const fmaxInput = document.getElementById('fmax');
+  if (fminInput) {
+    fminInput.addEventListener('input', () => sanitizeNumericTextInputValue(fminInput));
+    fminInput.addEventListener('blur', () => parseNumericInput('fmin', 300, { min: 0, max: 100000 }));
+  }
+  if (fmaxInput) {
+    fmaxInput.addEventListener('input', () => sanitizeNumericTextInputValue(fmaxInput));
+    fmaxInput.addEventListener('blur', () => parseNumericInput('fmax', 3400, { min: 0, max: 100000 }));
+  }
   document.getElementById('btnFilter').addEventListener('click', runFilter);
 });

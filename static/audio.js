@@ -10,6 +10,43 @@ let recordingSeconds = 0;
 let audioFilename = 'recording.wav';
 let isSaving = false;
 
+function sanitizeNumericTextInputValue(input, allowDecimal = false) {
+  if (!input) {
+    return;
+  }
+  const allowedPattern = allowDecimal ? /[^0-9.,]/g : /[^0-9]/g;
+  let value = String(input.value || '').replace(allowedPattern, '');
+  if (allowDecimal) {
+    value = value.replace(',', '.');
+    const firstDotIndex = value.indexOf('.');
+    if (firstDotIndex !== -1) {
+      value = value.slice(0, firstDotIndex + 1) + value.slice(firstDotIndex + 1).replace(/\./g, '');
+    }
+  }
+  input.value = value;
+}
+
+function parseNumericInput(inputId, fallbackValue, { min, max, allowDecimal = false } = {}) {
+  const input = document.getElementById(inputId);
+  if (!input) {
+    return fallbackValue;
+  }
+  sanitizeNumericTextInputValue(input, allowDecimal);
+  const raw = String(input.value || '').trim().replace(',', '.');
+  let parsed = allowDecimal ? Number.parseFloat(raw) : Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed)) {
+    parsed = fallbackValue;
+  }
+  if (Number.isFinite(min)) {
+    parsed = Math.max(min, parsed);
+  }
+  if (Number.isFinite(max)) {
+    parsed = Math.min(max, parsed);
+  }
+  input.value = allowDecimal ? String(parsed) : String(Math.round(parsed));
+  return parsed;
+}
+
 function toggleButtonSpinner(button, isLoading, loadingLabel) {
   if (!button) {
     return;
@@ -205,8 +242,9 @@ async function startRecording() {
   btnSave?.classList.remove('btn-saved');
 
   try {
-    const sampleRate = Number(document.getElementById('sampleRate')?.value || 16000);
+    const sampleRate = Number(document.querySelector('input[name="sample_rate"]:checked')?.value || 16000);
     const bitDepth = Number(document.querySelector('input[name="bit_depth"]:checked')?.value || 16);
+    const duration = parseNumericInput('duration', 5, { min: 1, max: 300 });
     if (![16000, 22050, 44100].includes(sampleRate)) {
       window.showToast('Fréquence invalide (16k, 22.05k, 44.1k uniquement).', 'error');
       return;
@@ -257,7 +295,7 @@ async function startRecording() {
     timerHandle = window.setInterval(() => {
       recordingSeconds += 1;
       updateTimerUI();
-      const maxDuration = Number(document.getElementById('duration')?.value || 5);
+      const maxDuration = parseNumericInput('duration', 5, { min: 1, max: 300 });
       if (recordingSeconds >= maxDuration) {
         stopRecording();
       }
@@ -311,7 +349,7 @@ async function saveRecording() {
   toggleButtonSpinner(btnSave, true, 'Sauvegarde...');
   let saveSucceeded = false;
   try {
-    const sampleRate = Number(document.getElementById('sampleRate').value);
+    const sampleRate = Number(document.querySelector('input[name="sample_rate"]:checked')?.value || 16000);
     const bitDepth = Number(document.querySelector('input[name="bit_depth"]:checked').value);
     const locuteur = 'locuteur_01';
     const session = 'session_01';
@@ -331,10 +369,6 @@ async function saveRecording() {
     window.showToast(`Fichier sauvegardé: ${payload.filename}`, 'success');
     if (window.refreshAudioFiles) {
       await window.refreshAudioFiles();
-      const audioFileSelect = document.getElementById('audioFileSelect');
-      if (audioFileSelect && audioFileSelect.options.length > 0) {
-        audioFileSelect.selectedIndex = audioFileSelect.options.length - 1;
-      }
     }
     audioBlob = null;
     audioChunks = [];
@@ -362,6 +396,11 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btnRecord').addEventListener('click', startRecording);
   document.getElementById('btnStop').addEventListener('click', stopRecording);
   document.getElementById('btnSave').addEventListener('click', saveRecording);
+  const durationInput = document.getElementById('duration');
+  if (durationInput) {
+    durationInput.addEventListener('input', () => sanitizeNumericTextInputValue(durationInput));
+    durationInput.addEventListener('blur', () => parseNumericInput('duration', 5, { min: 1, max: 300 }));
+  }
   initLiveChart();
   document.addEventListener('chartjs-ready', initLiveChart, { once: true });
 });

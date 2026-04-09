@@ -257,10 +257,51 @@ input, select, button {
   font-family: inherit;
 }
 
+.numeric-text-input {
+  letter-spacing: .01em;
+  font-variant-numeric: tabular-nums;
+}
+
 input:focus, select:focus {
   outline: none;
   border-color: var(--accent-cold);
   box-shadow: 0 0 0 3px rgba(120, 219, 196, 0.2);
+}
+
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding-right: 2.35rem;
+  cursor: pointer;
+  border-color: rgba(242, 177, 60, 0.34);
+  background-color: #1f1f1d;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #f2b13c 50%),
+    linear-gradient(135deg, #f2b13c 50%, transparent 50%),
+    linear-gradient(to right, rgba(242, 177, 60, 0.24), rgba(242, 177, 60, 0.24));
+  background-position:
+    calc(100% - 1.05rem) calc(50% + 1px),
+    calc(100% - .72rem) calc(50% + 1px),
+    calc(100% - 2.05rem) 50%;
+  background-size: .38rem .38rem, .38rem .38rem, 1px 1.45rem;
+  background-repeat: no-repeat;
+  transition: border-color .16s ease, box-shadow .16s ease, background-color .16s ease;
+}
+
+select:hover {
+  border-color: rgba(242, 177, 60, 0.62);
+  background-color: #242422;
+}
+
+select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(242, 177, 60, 0.22);
+}
+
+select option {
+  color: var(--txt-main);
+  background: #1d1d1b;
 }
 
 button {
@@ -355,6 +396,149 @@ button.is-loading {
   user-select: none;
 }
 
+.sample-rate-inputs {
+  gap: .45rem;
+}
+
+.sample-rate-inputs .radio-tile {
+  min-height: 42px;
+  padding: .52rem .45rem;
+  flex-direction: row;
+}
+
+.sample-rate-inputs .radio-label {
+  font-size: .78rem;
+  line-height: 1.1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.bitdepth-radio-inputs .radio-tile {
+  min-height: 42px;
+  padding: .52rem .55rem;
+  flex-direction: row;
+}
+
+.bitdepth-radio-inputs .radio-label {
+  font-size: .78rem;
+  line-height: 1.1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.audio-file-dropdown {
+  position: relative;
+}
+
+.audio-file-trigger {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  justify-content: flex-start;
+  text-align: left;
+  background: #1f1f1d;
+  border: 1px solid rgba(242, 177, 60, 0.35);
+  color: var(--txt-main);
+  font-weight: 500;
+  padding: .62rem 2.1rem .62rem .72rem;
+  border-radius: .72rem;
+}
+
+.audio-file-trigger-label {
+  display: inline-block;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.audio-file-trigger-icon {
+  position: absolute;
+  right: .72rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--txt-muted);
+  pointer-events: none;
+  width: 1rem;
+  height: 1rem;
+  transition: transform .16s ease;
+}
+
+.audio-file-trigger[aria-expanded="true"] .audio-file-trigger-icon {
+  transform: translateY(-50%) rotate(180deg);
+}
+
+.audio-file-trigger:disabled {
+  cursor: not-allowed;
+  opacity: .75;
+}
+
+.audio-file-list {
+  position: absolute;
+  top: calc(100% + .32rem);
+  right: 0;
+  left: 0;
+  z-index: 30;
+  display: grid;
+  gap: .34rem;
+  max-height: 210px;
+  overflow-y: auto;
+  background: #1c1c1b;
+  border: 1px solid var(--line-soft);
+  border-radius: .72rem;
+  padding: .4rem;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(-6px);
+  transform-origin: top right;
+  transition: opacity .14s ease, transform .14s ease, visibility .14s ease;
+}
+
+.audio-file-dropdown.is-open .audio-file-list {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.audio-file-item {
+  background: #232321;
+  border: 1px solid rgba(242, 177, 60, 0.18);
+  color: var(--txt-main);
+  font-weight: 500;
+  font-size: .83rem;
+  text-align: left;
+  padding: .48rem .58rem;
+  border-radius: .56rem;
+}
+
+.audio-file-item:hover:not([disabled]) {
+  filter: none;
+  border-color: rgba(242, 177, 60, 0.62);
+  background: #272725;
+}
+
+.audio-file-item.is-active {
+  background: linear-gradient(160deg, rgba(242, 177, 60, 0.24), rgba(222, 143, 45, 0.08));
+  border-color: rgba(242, 177, 60, 0.72);
+  color: #f9e7c8;
+}
+
+.audio-file-empty {
+  border: 1px dashed var(--line-soft);
+  border-radius: .65rem;
+  color: var(--txt-muted);
+  font-size: .84rem;
+  padding: .6rem .7rem;
+}
+
 .radio-option {
   position: relative;
   flex: 1;
@@ -427,7 +611,7 @@ button.is-loading {
 }
 
 .capture-card .chart-box {
-  height: 160px;
+  height: 128px;
 }
 
 .radio-input:checked + .radio-tile {

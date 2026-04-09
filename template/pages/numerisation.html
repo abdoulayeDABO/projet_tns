@@ -15,17 +15,32 @@
 
     <div class="field-row">
       <div class="field-block">
-        <label for="sampleRate">Fréquence d'échantillonnage</label>
-        <select id="sampleRate" name="sample_rate">
-          <option value="16000">16 kHz</option>
-          <option value="22050">22,05 kHz</option>
-          <option value="44100">44,1 kHz</option>
-        </select>
+        <label>Fréquence d'échantillonnage</label>
+        <div class="radio-inputs sample-rate-inputs">
+          <label class="radio-option">
+            <input class="radio-input" type="radio" name="sample_rate" value="16000" checked>
+            <span class="radio-tile">
+              <span class="radio-label">16 kHz</span>
+            </span>
+          </label>
+          <label class="radio-option">
+            <input class="radio-input" type="radio" name="sample_rate" value="22050">
+            <span class="radio-tile">
+              <span class="radio-label">22.05 kHz</span>
+            </span>
+          </label>
+          <label class="radio-option">
+            <input class="radio-input" type="radio" name="sample_rate" value="44100">
+            <span class="radio-tile">
+              <span class="radio-label">44.1 kHz</span>
+            </span>
+          </label>
+        </div>
       </div>
 
       <div class="field-block">
         <label for="duration">Durée (secondes)</label>
-        <input type="number" id="duration" min="1" max="300" value="5">
+        <input type="text" id="duration" class="numeric-text-input" inputmode="numeric" pattern="[0-9]*" value="5" placeholder="1 à 300">
       </div>
     </div>
 
@@ -35,14 +50,12 @@
         <label class="radio-option">
           <input class="radio-input" type="radio" name="bit_depth" value="16" checked>
           <span class="radio-tile">
-            <span class="radio-icon"><i class="bi bi-hdd-fill"></i></span>
             <span class="radio-label">16 bits</span>
           </span>
         </label>
         <label class="radio-option">
           <input class="radio-input" type="radio" name="bit_depth" value="32">
           <span class="radio-tile">
-            <span class="radio-icon"><i class="bi bi-cpu-fill"></i></span>
             <span class="radio-label">32 bits</span>
           </span>
         </label>
@@ -69,8 +82,15 @@
     <div class="card-header"><i class="bi bi-scissors"></i><h3>Segmentation</h3></div>
 
     <div class="field-block">
-      <label for="audioFileSelect">Fichier audio</label>
-      <select id="audioFileSelect"></select>
+      <label for="audioFileList">Fichier audio</label>
+      <input type="hidden" id="audioFileSelect" value="">
+      <div id="audioFileDropdown" class="audio-file-dropdown">
+        <button type="button" id="audioFileTrigger" class="audio-file-trigger" aria-haspopup="listbox" aria-expanded="false">
+          <span id="audioFileTriggerLabel" class="audio-file-trigger-label">Sélectionner un fichier audio</span>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="audio-file-trigger-icon" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <div id="audioFileList" class="audio-file-list" role="listbox" aria-label="Fichiers audio disponibles"></div>
+      </div>
     </div>
 
     <div class="field-block">
@@ -83,7 +103,7 @@
 
     <div class="field-block">
       <label for="minSilenceDuration">Durée min silence (ms)</label>
-      <input type="number" id="minSilenceDuration" value="300">
+      <input type="text" id="minSilenceDuration" class="numeric-text-input" inputmode="numeric" pattern="[0-9]*" value="300" placeholder="ex: 300">
     </div>
 
     <button id="btnSegment" class="space-top-btn"><i class="bi bi-scissors"></i> Segmenter</button>
