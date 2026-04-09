@@ -46,7 +46,6 @@ function renderSegmentsTable(segments) {
 
 function renderSegmentsDurationChart(segments) {
   if (typeof Chart === 'undefined') {
-    window.showToast('Graphique indisponible temporairement (Chart.js non chargé).', 'warning');
     return;
   }
   const canvas = document.getElementById('segmentsDurationChart');

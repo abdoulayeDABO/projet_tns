@@ -35,30 +35,33 @@
   </section>
 
   <section class="card">
-    <h3 style="margin-bottom:.6rem;color:var(--clr-primary-a50);">Signal temporel — Filtré</h3>
+    <h3 style="margin-bottom:.6rem;color:var(--clr-primary-a50);">Signal temporel — Avant/Après (superposé)</h3>
     <div class="chart-box"><canvas id="chartTimeFiltered"></canvas></div>
   </section>
 
   <section class="card">
-    <h3 style="margin-bottom:.6rem;color:var(--clr-primary-a50);">Spectre FFT — Filtré</h3>
+    <h3 style="margin-bottom:.6rem;color:var(--clr-primary-a50);">Spectre FFT — Avant/Après (superposé)</h3>
     <div class="chart-box"><canvas id="chartFFTFiltered"></canvas></div>
-    <div class="chart-box" style="margin-top:.7rem;"><canvas id="chartFFTOverlay"></canvas></div>
   </section>
 </div>
 
 <section class="card" style="margin-top:1rem;">
   <div class="card-header"><i class="bi bi-funnel"></i><h3>Contrôles du filtre</h3></div>
 
-  <div class="radio-group">
-    <label class="radio-card">
+  <div class="radio-group filter-type-toggle">
+    <label class="radio-card filter-option">
       <input type="radio" name="filterType" value="passband" checked>
-      <i class="bi bi-bandaid"></i> Passe-bande
-      <small style="display:block;color:var(--clr-surface-a50);">Conserve [fmin, fmax]</small>
+      <div class="filter-option-content">
+        <div class="filter-option-title"><i class="bi bi-bandaid"></i> Passe-bande</div>
+        <small>Conserve [fmin, fmax]</small>
+      </div>
     </label>
-    <label class="radio-card">
+    <label class="radio-card filter-option">
       <input type="radio" name="filterType" value="stopband">
-      <i class="bi bi-slash-circle"></i> Coupe-bande
-      <small style="display:block;color:var(--clr-surface-a50);">Supprime [fmin, fmax]</small>
+      <div class="filter-option-content">
+        <div class="filter-option-title"><i class="bi bi-slash-circle"></i> Coupe-bande</div>
+        <small>Supprime [fmin, fmax]</small>
+      </div>
     </label>
   </div>
 

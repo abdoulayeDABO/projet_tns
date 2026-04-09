@@ -7,7 +7,6 @@ let chartFFTOriginal = null;
 let chartTimeFiltered = null;
 let chartFFTFiltered = null;
 let chartMask = null;
-let chartFFTOverlay = null;
 
 let dragStartX = null;
 
@@ -84,6 +83,40 @@ function updateChart(chart, labels, values) {
   chart.update('none');
 }
 
+function updateComparedChart(chart, labels, originalValues, filteredValues) {
+  if (!chart) {
+    return;
+  }
+
+  const targetLength = Math.min(labels.length, originalValues.length, filteredValues.length);
+  const syncedLabels = labels.slice(0, targetLength);
+  const syncedOriginal = originalValues.slice(0, targetLength);
+  const syncedFiltered = filteredValues.slice(0, targetLength);
+
+  chart.data.labels = syncedLabels;
+  chart.data.datasets = [
+    {
+      label: 'Original',
+      data: syncedOriginal,
+      borderColor: '#9b59b6',
+      backgroundColor: 'rgba(155,89,182,0.15)',
+      fill: false,
+      tension: 0.1,
+      pointRadius: 0,
+    },
+    {
+      label: 'Filtré',
+      data: syncedFiltered,
+      borderColor: '#47d5a6',
+      backgroundColor: 'rgba(71,213,166,0.12)',
+      fill: false,
+      tension: 0.1,
+      pointRadius: 0,
+    },
+  ];
+  chart.update('none');
+}
+
 function updateFileInfo(data, filename) {
   const info = document.getElementById('fileInfo');
   info.classList.remove('hidden');
@@ -126,31 +159,6 @@ function drawMaskChart(freqAxis, fmin, fmax, filterType) {
   chartMask.data.labels = freqAxis;
   chartMask.data.datasets[0].data = points;
   chartMask.update('none');
-}
-
-function updateOverlay(freqAxis, fftOriginal, fftFiltered) {
-  if (typeof Chart === 'undefined') {
-    return;
-  }
-  if (!chartFFTOverlay) {
-    chartFFTOverlay = new Chart(document.getElementById('chartFFTOverlay'), {
-      type: 'line',
-      data: {
-        labels: freqAxis,
-        datasets: [
-          { label: 'Original', data: fftOriginal, borderColor: '#9b59b6', pointRadius: 0, fill: false },
-          { label: 'Filtré', data: fftFiltered, borderColor: '#47d5a6', pointRadius: 0, fill: false }
-        ]
-      },
-      options: window.darkChartDefaults
-    });
-    return;
-  }
-
-  chartFFTOverlay.data.labels = freqAxis;
-  chartFFTOverlay.data.datasets[0].data = fftOriginal;
-  chartFFTOverlay.data.datasets[1].data = fftFiltered;
-  chartFFTOverlay.update('none');
 }
 
 async function analyzeFile(file) {
@@ -204,9 +212,8 @@ async function runFilter() {
       throw new Error(payload.error || 'Échec du filtrage');
     }
 
-    updateChart(chartTimeFiltered, payload.time_axis, payload.amplitude_filtered);
-    updateChart(chartFFTFiltered, payload.freq_axis, payload.fft_magnitude_filtered);
-    updateOverlay(payload.freq_axis, originalAnalysis.fft_magnitude, payload.fft_magnitude_filtered);
+    updateComparedChart(chartTimeFiltered, payload.time_axis, originalAnalysis.amplitude, payload.amplitude_filtered);
+    updateComparedChart(chartFFTFiltered, payload.freq_axis, originalAnalysis.fft_magnitude, payload.fft_magnitude_filtered);
 
     const resultBox = document.getElementById('filterResult');
     resultBox.classList.remove('hidden');
@@ -281,9 +288,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   setupDragAndDrop();
   initChartsIfPossible();
-  if (typeof Chart === 'undefined') {
-    window.showToast('Bibliothèque de tracé indisponible. Vérifiez la connexion puis rechargez la page.', 'warning');
-  }
   document.addEventListener('chartjs-ready', initChartsIfPossible, { once: true });
   setupFFTRangeSelection();
   document.getElementById('btnFilter').addEventListener('click', runFilter);

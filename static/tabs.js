@@ -24,20 +24,47 @@ const darkChartDefaults = {
 };
 
 function showToast(message, type = "info") {
-  const host = document.getElementById("toastContainer");
-  if (!host) {
-    return;
-  }
-
-  const toast = document.createElement("div");
-  toast.className = `toast ${type}`;
-  toast.textContent = message;
-  host.appendChild(toast);
-
-  window.setTimeout(() => {
-    toast.remove();
-  }, 4000);
+  return;
 }
 
 window.darkChartDefaults = darkChartDefaults;
 window.showToast = showToast;
+
+document.addEventListener("DOMContentLoaded", () => {
+  const toggleButton = document.getElementById("sidebarToggle");
+  const sidebar = document.getElementById("appSidebar");
+  if (!toggleButton || !sidebar) {
+    return;
+  }
+
+  const widthTransitionMs = 200;
+  let textRevealTimer = null;
+
+  const setIconOnly = iconOnly => {
+    if (textRevealTimer) {
+      clearTimeout(textRevealTimer);
+      textRevealTimer = null;
+    }
+
+    if (iconOnly) {
+      document.body.classList.add("sidebar-text-hidden");
+      requestAnimationFrame(() => {
+        document.body.classList.add("sidebar-icon-only");
+      });
+      toggleButton.setAttribute("aria-expanded", "false");
+      return;
+    }
+
+    document.body.classList.remove("sidebar-icon-only");
+    textRevealTimer = window.setTimeout(() => {
+      document.body.classList.remove("sidebar-text-hidden");
+      textRevealTimer = null;
+    }, widthTransitionMs);
+    toggleButton.setAttribute("aria-expanded", "true");
+  };
+
+  toggleButton.addEventListener("click", () => {
+    const iconOnly = !document.body.classList.contains("sidebar-icon-only");
+    setIconOnly(iconOnly);
+  });
+});

@@ -7,7 +7,6 @@ let streamRef = null;
 let liveChart = null;
 let timerHandle = null;
 let recordingSeconds = 0;
-let chartWarningShown = false;
 
 function formatTimer(totalSeconds) {
   const mm = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
@@ -31,10 +30,6 @@ function setRecordingState(recording) {
 
 function initLiveChart() {
   if (typeof Chart === 'undefined') {
-    if (!chartWarningShown) {
-      window.showToast('Visualisation indisponible pour le moment. Réessai du tracé en cours…', 'warning');
-      chartWarningShown = true;
-    }
     return;
   }
   const canvas = document.getElementById('liveWaveform');
@@ -166,8 +161,8 @@ async function saveRecording() {
   try {
     const sampleRate = Number(document.getElementById('sampleRate').value);
     const bitDepth = Number(document.querySelector('input[name="bit_depth"]:checked').value);
-    const locuteur = document.getElementById('locuteur').value || 'locuteur_01';
-    const session = document.getElementById('session').value || 'session_01';
+    const locuteur = 'locuteur_01';
+    const session = 'session_01';
 
     const formData = new FormData();
     formData.append('audio', audioBlob, 'recording.webm');
