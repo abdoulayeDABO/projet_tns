@@ -10,6 +10,24 @@ let chartMask = null;
 
 let dragStartX = null;
 
+function getCurrentFilterParams() {
+  const fmin = parseNumericInput('fmin', 300, { min: 0, max: 100000 });
+  const fmax = parseNumericInput('fmax', 3400, { min: 0, max: 100000 });
+  const filterType = document.querySelector('input[name="filterType"]:checked')?.value || 'passband';
+  return { fmin, fmax, filterType };
+}
+
+function refreshMaskPreview() {
+  if (!originalAnalysis || !Array.isArray(originalAnalysis.freq_axis) || !originalAnalysis.freq_axis.length) {
+    return;
+  }
+  const { fmin, fmax, filterType } = getCurrentFilterParams();
+  if (!Number.isFinite(fmin) || !Number.isFinite(fmax) || fmin >= fmax) {
+    return;
+  }
+  drawMaskChart(originalAnalysis.freq_axis, fmin, fmax, filterType);
+}
+
 function sanitizeNumericTextInputValue(input, allowDecimal = false) {
   if (!input) {
     return;
@@ -120,6 +138,29 @@ function updateChart(chart, labels, values) {
   chart.update('none');
 }
 
+function toggleButtonSpinner(button, isLoading, loadingLabel) {
+  if (!button) {
+    return;
+  }
+
+  if (isLoading) {
+    if (!button.dataset.originalHtml) {
+      button.dataset.originalHtml = button.innerHTML;
+    }
+    button.innerHTML = `<span class="btn-spinner" aria-hidden="true"></span><span>${loadingLabel}</span>`;
+    button.classList.add('is-loading');
+    button.setAttribute('aria-busy', 'true');
+    button.disabled = true;
+    return;
+  }
+
+  if (button.dataset.originalHtml) {
+    button.innerHTML = button.dataset.originalHtml;
+  }
+  button.classList.remove('is-loading');
+  button.removeAttribute('aria-busy');
+}
+
 function updateComparedChart(chart, labels, originalValues, filteredValues) {
   if (!chart) {
     return;
@@ -175,26 +216,62 @@ function drawMaskChart(freqAxis, fmin, fmax, filterType) {
     return inBand ? 0 : 1;
   });
 
+  const curveColor = filterType === 'passband' ? '#4ad6bc' : '#ffae42';
+  const canvas = document.getElementById('chartMask');
+  if (!canvas) {
+    return;
+  }
+
   if (!chartMask) {
-    chartMask = new Chart(document.getElementById('chartMask'), {
+    chartMask = new Chart(canvas, {
       type: 'line',
       data: {
         labels: freqAxis,
         datasets: [{
-          label: 'Masque H(f)',
+          label: filterType === 'passband' ? 'H(f) Passe-bande' : 'H(f) Coupe-bande',
           data: points,
-          borderColor: '#47d5a6',
+          borderColor: curveColor,
+          backgroundColor: 'rgba(74,214,188,0.12)',
+          borderWidth: 2,
           stepped: true,
           pointRadius: 0
         }]
       },
-      options: window.darkChartDefaults
+      options: {
+        ...window.darkChartDefaults,
+        interaction: { mode: 'nearest', intersect: false },
+        plugins: {
+          ...window.darkChartDefaults.plugins,
+          title: {
+            display: false,
+          }
+        },
+        scales: {
+          ...window.darkChartDefaults.scales,
+          x: {
+            ...window.darkChartDefaults.scales.x,
+            title: { display: true, text: 'Fréquence (Hz)', color: '#aab8c9' }
+          },
+          y: {
+            ...window.darkChartDefaults.scales.y,
+            min: -0.05,
+            max: 1.05,
+            ticks: {
+              color: '#aab8c9',
+              callback: value => (value === 0 || value === 1 ? value : '')
+            },
+            title: { display: true, text: 'Gain |H(f)|', color: '#aab8c9' }
+          }
+        }
+      }
     });
     return;
   }
 
   chartMask.data.labels = freqAxis;
   chartMask.data.datasets[0].data = points;
+  chartMask.data.datasets[0].label = filterType === 'passband' ? 'H(f) Passe-bande' : 'H(f) Coupe-bande';
+  chartMask.data.datasets[0].borderColor = curveColor;
   chartMask.update('none');
 }
 
@@ -217,6 +294,7 @@ async function analyzeFile(file) {
     updateFileInfo(payload, file.name);
     updateChart(chartTimeOriginal, payload.time_axis, payload.amplitude);
     updateChart(chartFFTOriginal, payload.freq_axis, payload.fft_magnitude);
+    refreshMaskPreview();
     setProgress('analyzeProgress', 100);
     window.showToast('Analyse FFT terminée.', 'success');
   } catch (error) {
@@ -227,19 +305,19 @@ async function analyzeFile(file) {
 }
 
 async function runFilter() {
+  const btnFilter = document.getElementById('btnFilter');
+  toggleButtonSpinner(btnFilter, true, 'Filtrage...');
   try {
     if (!currentFileId || !originalAnalysis) {
       window.showToast('Chargez et analysez un fichier d’abord.', 'warning');
       return;
     }
 
-    const fmin = parseNumericInput('fmin', 300, { min: 0, max: 100000 });
-    const fmax = parseNumericInput('fmax', 3400, { min: 0, max: 100000 });
+    const { fmin, fmax, filterType } = getCurrentFilterParams();
     if (!Number.isFinite(fmin) || !Number.isFinite(fmax) || fmin >= fmax) {
       window.showToast('Valeurs invalides: il faut 0 ≤ fmin < fmax.', 'warning');
       return;
     }
-    const filterType = document.querySelector('input[name="filterType"]:checked').value;
 
     drawMaskChart(originalAnalysis.freq_axis, fmin, fmax, filterType);
 
@@ -263,6 +341,11 @@ async function runFilter() {
     window.showToast('Filtrage appliqué avec succès.', 'success');
   } catch (error) {
     window.showToast(error.message, 'error');
+  } finally {
+    toggleButtonSpinner(btnFilter, false);
+    if (btnFilter) {
+      btnFilter.disabled = false;
+    }
   }
 }
 
@@ -318,6 +401,7 @@ function setupFFTRangeSelection() {
     const fmax = Math.max(x1, x2);
     document.getElementById('fmin').value = Math.round(fmin);
     document.getElementById('fmax').value = Math.round(fmax);
+    refreshMaskPreview();
     dragStartX = null;
     window.showToast('Bande fréquentielle sélectionnée sur le spectre.', 'info');
   });
@@ -333,13 +417,27 @@ document.addEventListener('DOMContentLoaded', () => {
   setupFFTRangeSelection();
   const fminInput = document.getElementById('fmin');
   const fmaxInput = document.getElementById('fmax');
+  const filterTypeInputs = document.querySelectorAll('input[name="filterType"]');
   if (fminInput) {
-    fminInput.addEventListener('input', () => sanitizeNumericTextInputValue(fminInput));
-    fminInput.addEventListener('blur', () => parseNumericInput('fmin', 300, { min: 0, max: 100000 }));
+    fminInput.addEventListener('input', () => {
+      sanitizeNumericTextInputValue(fminInput);
+      refreshMaskPreview();
+    });
+    fminInput.addEventListener('blur', () => {
+      parseNumericInput('fmin', 300, { min: 0, max: 100000 });
+      refreshMaskPreview();
+    });
   }
   if (fmaxInput) {
-    fmaxInput.addEventListener('input', () => sanitizeNumericTextInputValue(fmaxInput));
-    fmaxInput.addEventListener('blur', () => parseNumericInput('fmax', 3400, { min: 0, max: 100000 }));
+    fmaxInput.addEventListener('input', () => {
+      sanitizeNumericTextInputValue(fmaxInput);
+      refreshMaskPreview();
+    });
+    fmaxInput.addEventListener('blur', () => {
+      parseNumericInput('fmax', 3400, { min: 0, max: 100000 });
+      refreshMaskPreview();
+    });
   }
+  filterTypeInputs.forEach(input => input.addEventListener('change', refreshMaskPreview));
   document.getElementById('btnFilter').addEventListener('click', runFilter);
 });

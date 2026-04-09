@@ -9,7 +9,7 @@
   <p class="page-subtitle">Chargez un signal audio, observez son empreinte fréquentielle puis appliquez un masque rectangulaire avec comparaison visuelle avant/après.</p>
 </section>
 
-<section class="card section-space-bottom">
+<section class="card section-space-bottom filter-upload-panel">
   <div class="drop-zone" id="dropZone">
     <i class="bi bi-cloud-upload upload-icon"></i>
     <p>Glissez un fichier audio ou cliquez pour sélectionner</p>
@@ -26,7 +26,7 @@
   <div class="progress progress-space-top"><div id="analyzeProgress" class="progress-bar"></div></div>
 </section>
 
-<div class="grid-2">
+<div class="grid-2 filter-display-grid">
   <section class="card">
     <h3 class="chart-title">Signal temporel — Original</h3>
     <div class="chart-box"><canvas id="chartTimeOriginal"></canvas></div>
@@ -48,39 +48,43 @@
   </section>
 </div>
 
-<section class="card section-space-top">
+<section class="card section-space-top filter-control-panel">
   <div class="card-header"><i class="bi bi-funnel"></i><h3>Contrôles du filtre</h3></div>
 
-  <div class="radio-group filter-type-toggle">
-    <label class="radio-card filter-option">
-      <input type="radio" name="filterType" value="passband" checked>
-      <div class="filter-option-content">
-        <div class="filter-option-title"><i class="bi bi-bandaid"></i> Passe-bande</div>
-        <small>Conserve [fmin, fmax]</small>
-      </div>
-    </label>
-    <label class="radio-card filter-option">
-      <input type="radio" name="filterType" value="stopband">
-      <div class="filter-option-content">
-        <div class="filter-option-title"><i class="bi bi-slash-circle"></i> Coupe-bande</div>
-        <small>Supprime [fmin, fmax]</small>
-      </div>
-    </label>
+  <div class="filter-mode-block section-space-top-sm">
+    <p class="filter-mode-label">Mode du filtre</p>
+    <div class="radio-group filter-type-toggle">
+      <label class="radio-card filter-option">
+        <input type="radio" name="filterType" value="passband" checked>
+        <div class="filter-option-content">
+          <div class="filter-option-title">Passe-bande</div>
+          <small>Conserve [fmin, fmax]</small>
+        </div>
+      </label>
+      <label class="radio-card filter-option">
+        <input type="radio" name="filterType" value="stopband">
+        <div class="filter-option-content">
+          <div class="filter-option-title">Coupe-bande</div>
+          <small>Supprime [fmin, fmax]</small>
+        </div>
+      </label>
+    </div>
   </div>
 
-  <div class="grid-2 section-space-top-sm">
-    <div>
+  <div class="grid-2 section-space-top-sm telemetry-grid">
+    <div class="telemetry-field">
       <label for="fmin">fmin (Hz)</label>
-      <input type="text" id="fmin" class="numeric-text-input" inputmode="numeric" pattern="[0-9]*" value="300" placeholder="ex: 300">
+      <input type="text" id="fmin" class="numeric-text-input telemetry-input" inputmode="numeric" pattern="[0-9]*" value="300" placeholder="ex: 300">
     </div>
-    <div>
+    <div class="telemetry-field">
       <label for="fmax">fmax (Hz)</label>
-      <input type="text" id="fmax" class="numeric-text-input" inputmode="numeric" pattern="[0-9]*" value="3400" placeholder="ex: 3400">
+      <input type="text" id="fmax" class="numeric-text-input telemetry-input" inputmode="numeric" pattern="[0-9]*" value="3400" placeholder="ex: 3400">
     </div>
   </div>
 
-  <div class="chart-box chart-space-top"><canvas id="chartMask"></canvas></div>
-  <button id="btnFilter" class="space-top-btn"><i class="bi bi-magic"></i> Appliquer le filtre</button>
+  <h3 class="chart-title section-space-top-sm">Réponse fréquentielle — Bode (H(f))</h3>
+  <div class="chart-box chart-space-top filter-main-display"><canvas id="chartMask"></canvas></div>
+  <button id="btnFilter" class="space-top-btn btn-filter-apply"><i class="bi bi-magic"></i> Appliquer le filtre</button>
 </section>
 
 <section id="filterResult" class="card hidden section-space-top">

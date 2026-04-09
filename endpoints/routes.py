@@ -33,14 +33,14 @@ def get_processor() -> AudioProcessor:
 
 @bp.get("/")
 def index() -> str:
-    """Affiche la page d'accueil.
+    """Affiche directement la page Numérisation en accueil.
 
     Args:
         None
     Returns:
-        HTML rendu de la page index.
+        HTML rendu de la page `numerisation`.
     """
-    return render_template("index.html", active="home")
+    return render_template("pages/numerisation.html", active="num")
 
 
 @bp.get("/numerisation")
