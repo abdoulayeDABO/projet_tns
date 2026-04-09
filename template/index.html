@@ -3,18 +3,23 @@
 {% block title %}Accueil — TNS{% endblock %}
 
 {% block content %}
-<h1 class="page-title">Application TNS — ESP/UCAD</h1>
-<p class="page-subtitle">Choisissez un module pour démarrer vos travaux pratiques.</p>
+<section class="hero-block">
+  <p class="hero-kicker">Plateforme pédagogique ESP/UCAD</p>
+  <h1 class="page-title">Digital Signal Processing Studio</h1>
+  <p class="page-subtitle">Une interface unifiée pour capturer, segmenter, analyser et filtrer la parole avec une lecture visuelle nette des phénomènes fréquentiels.</p>
+</section>
 
-<div class="grid-2">
-  <a class="card" href="/numerisation" style="text-decoration:none;color:inherit;">
-    <div class="card-header"><i class="bi bi-mic"></i><h3>Numérisation & Segmentation</h3></div>
-    <p style="color:var(--clr-surface-a50);">Enregistrez au micro, sauvegardez en WAV puis segmentez automatiquement les portions vocales.</p>
+<div class="grid-2 entry-grid">
+  <a class="card entry-card" href="/numerisation">
+    <div class="card-header"><i class="bi bi-mic"></i><h3>Studio de Numérisation</h3></div>
+    <p class="card-text">Capture micro, calibration de paramètres et extraction automatique des segments vocaux pertinents.</p>
+    <span class="entry-cta">Ouvrir le module <i class="bi bi-arrow-up-right"></i></span>
   </a>
 
-  <a class="card" href="/filtrage" style="text-decoration:none;color:inherit;">
-    <div class="card-header"><i class="bi bi-graph-up"></i><h3>Analyse FFT & Filtrage</h3></div>
-    <p style="color:var(--clr-surface-a50);">Chargez un audio, visualisez son spectre et appliquez un filtre rectangulaire passe/coupe-bande.</p>
+  <a class="card entry-card" href="/filtrage">
+    <div class="card-header"><i class="bi bi-graph-up"></i><h3>Laboratoire Spectral</h3></div>
+    <p class="card-text">Visualisation temporelle/FFT, filtres fréquentiels et comparaison avant/après sur des courbes superposées.</p>
+    <span class="entry-cta">Explorer les spectres <i class="bi bi-arrow-up-right"></i></span>
   </a>
 </div>
 {% endblock %}

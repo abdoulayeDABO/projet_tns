@@ -3,12 +3,15 @@
 {% block title %}Numérisation — TNS{% endblock %}
 
 {% block content %}
-<h1 class="page-title">Numérisation & Segmentation vocale</h1>
-<p class="page-subtitle">Paramétrez l’enregistrement, sauvegardez en WAV, puis segmentez la parole.</p>
+<section class="hero-block">
+  <p class="hero-kicker">Module Studio</p>
+  <h1 class="page-title">Numérisation & Segmentation vocale</h1>
+  <p class="page-subtitle">Pilotez votre acquisition audio, stockez les enregistrements en WAV puis découpez automatiquement les zones de parole.</p>
+</section>
 
 <div class="grid-2">
   <section class="card">
-    <div class="card-header"><i class="bi bi-mic-fill"></i><h3>Paramètres & Enregistrement</h3></div>
+    <div class="card-header"><i class="bi bi-mic-fill"></i><h3>Capture & Réglages</h3></div>
 
     <label for="sampleRate">Fréquence d'échantillonnage</label>
     <select id="sampleRate" name="sample_rate">
@@ -26,22 +29,22 @@
     <label for="duration">Durée (secondes)</label>
     <input type="number" id="duration" min="1" max="300" value="5">
 
-    <div class="row" style="margin-top:.75rem;">
+    <div class="row form-row-top">
       <button id="btnRecord"><i class="bi bi-mic-fill"></i> Enregistrer</button>
       <button id="btnStop" class="btn-secondary" disabled><i class="bi bi-stop-fill"></i> Arrêter</button>
       <button id="btnSave" class="btn-secondary" disabled><i class="bi bi-save"></i> Sauvegarder</button>
     </div>
 
-    <div class="row" style="justify-content:space-between;margin-top:.75rem;">
+    <div class="row row-between form-row-top">
       <div id="recordTimer">00:00</div>
       <div id="recordBadge" class="badge-rec"><span class="dot"></span><span>en attente</span></div>
     </div>
 
-    <div class="chart-box" style="margin-top:.75rem;">
+    <div class="chart-box chart-space-top">
       <canvas id="liveWaveform"></canvas>
     </div>
 
-    <div class="progress" style="margin-top:.7rem;"><div class="progress-bar" id="recordProgress"></div></div>
+    <div class="progress progress-space-top"><div class="progress-bar" id="recordProgress"></div></div>
   </section>
 
   <section class="card">
@@ -57,10 +60,10 @@
     <label for="minSilenceDuration">Durée min silence (ms)</label>
     <input type="number" id="minSilenceDuration" value="300">
 
-    <button id="btnSegment" style="margin-top:.75rem;"><i class="bi bi-scissors"></i> Segmenter</button>
-    <div class="progress" style="margin-top:.6rem;"><div class="progress-bar" id="segmentProgress"></div></div>
+    <button id="btnSegment" class="space-top-btn"><i class="bi bi-scissors"></i> Segmenter</button>
+    <div class="progress progress-space-top"><div class="progress-bar" id="segmentProgress"></div></div>
 
-    <div class="table-wrap" style="margin-top:.8rem;">
+    <div class="table-wrap table-space-top">
       <table id="segmentsTable">
         <thead>
           <tr>
@@ -71,7 +74,7 @@
       </table>
     </div>
 
-    <div class="chart-box" style="margin-top:.75rem;">
+    <div class="chart-box chart-space-top">
       <canvas id="segmentsDurationChart"></canvas>
     </div>
   </section>

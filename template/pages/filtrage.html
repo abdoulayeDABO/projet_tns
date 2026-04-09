@@ -3,49 +3,52 @@
 {% block title %}Analyse FFT — TNS{% endblock %}
 
 {% block content %}
-<h1 class="page-title">Analyse FFT & Filtrage fréquentiel</h1>
-<p class="page-subtitle">Importez un fichier audio, inspectez son spectre, puis appliquez un masque rectangulaire.</p>
+<section class="hero-block">
+  <p class="hero-kicker">Module Spectres</p>
+  <h1 class="page-title">Analyse FFT & Filtrage fréquentiel</h1>
+  <p class="page-subtitle">Chargez un signal audio, observez son empreinte fréquentielle puis appliquez un masque rectangulaire avec comparaison visuelle avant/après.</p>
+</section>
 
-<section class="card" style="margin-bottom:1rem;">
+<section class="card section-space-bottom">
   <div class="drop-zone" id="dropZone">
-    <i class="bi bi-cloud-upload" style="font-size:1.5rem;color:var(--clr-primary-a50);"></i>
+    <i class="bi bi-cloud-upload upload-icon"></i>
     <p>Glissez un fichier audio ou cliquez pour sélectionner</p>
-    <p class="hint" style="color:var(--clr-surface-a50);font-size:.9rem;">WAV, MP3, OGG, FLAC, M4A, WEBM — Conversion auto en WAV</p>
+    <p class="hint upload-hint">WAV, MP3, OGG, FLAC, M4A, WEBM — Conversion auto en WAV</p>
     <input type="file" id="audioUpload" accept=".wav,.mp3,.ogg,.flac,.m4a,.webm" hidden>
   </div>
 
-  <div id="fileInfo" class="hidden" style="margin-top:.8rem;color:var(--clr-surface-a50);display:flex;gap:1rem;flex-wrap:wrap;">
+  <div id="fileInfo" class="hidden file-info-row">
     <span id="fileName"></span>
     <span id="fileDuration"></span>
     <span id="fileSampleRate"></span>
     <span id="fileChannels"></span>
   </div>
-  <div class="progress" style="margin-top:.6rem;"><div id="analyzeProgress" class="progress-bar"></div></div>
+  <div class="progress progress-space-top"><div id="analyzeProgress" class="progress-bar"></div></div>
 </section>
 
 <div class="grid-2">
   <section class="card">
-    <h3 style="margin-bottom:.6rem;color:var(--clr-primary-a50);">Signal temporel — Original</h3>
+    <h3 class="chart-title">Signal temporel — Original</h3>
     <div class="chart-box"><canvas id="chartTimeOriginal"></canvas></div>
   </section>
 
   <section class="card">
-    <h3 style="margin-bottom:.6rem;color:var(--clr-primary-a50);">Spectre FFT — Original</h3>
+    <h3 class="chart-title">Spectre FFT — Original</h3>
     <div class="chart-box"><canvas id="chartFFTOriginal"></canvas></div>
   </section>
 
   <section class="card">
-    <h3 style="margin-bottom:.6rem;color:var(--clr-primary-a50);">Signal temporel — Avant/Après (superposé)</h3>
+    <h3 class="chart-title">Signal temporel — Avant/Après (superposé)</h3>
     <div class="chart-box"><canvas id="chartTimeFiltered"></canvas></div>
   </section>
 
   <section class="card">
-    <h3 style="margin-bottom:.6rem;color:var(--clr-primary-a50);">Spectre FFT — Avant/Après (superposé)</h3>
+    <h3 class="chart-title">Spectre FFT — Avant/Après (superposé)</h3>
     <div class="chart-box"><canvas id="chartFFTFiltered"></canvas></div>
   </section>
 </div>
 
-<section class="card" style="margin-top:1rem;">
+<section class="card section-space-top">
   <div class="card-header"><i class="bi bi-funnel"></i><h3>Contrôles du filtre</h3></div>
 
   <div class="radio-group filter-type-toggle">
@@ -65,7 +68,7 @@
     </label>
   </div>
 
-  <div class="grid-2" style="margin-top:.75rem;">
+  <div class="grid-2 section-space-top-sm">
     <div>
       <label for="fmin">fmin (Hz)</label>
       <input type="number" id="fmin" value="300" min="0">
@@ -76,13 +79,13 @@
     </div>
   </div>
 
-  <div class="chart-box" style="margin-top:.75rem;"><canvas id="chartMask"></canvas></div>
-  <button id="btnFilter" style="margin-top:.75rem;"><i class="bi bi-magic"></i> Appliquer le filtre</button>
+  <div class="chart-box chart-space-top"><canvas id="chartMask"></canvas></div>
+  <button id="btnFilter" class="space-top-btn"><i class="bi bi-magic"></i> Appliquer le filtre</button>
 </section>
 
-<section id="filterResult" class="card hidden" style="margin-top:1rem;">
-  <audio id="audioPlayer" controls style="width:100%;margin-bottom:.7rem;"></audio>
-  <a id="btnDownload" class="btn-download" href="#" style="color:var(--clr-primary-a50);text-decoration:none;">
+<section id="filterResult" class="card hidden section-space-top">
+  <audio id="audioPlayer" controls class="result-audio"></audio>
+  <a id="btnDownload" class="btn-download result-download" href="#">
     <i class="bi bi-download"></i> Télécharger WAV filtré
   </a>
 </section>
