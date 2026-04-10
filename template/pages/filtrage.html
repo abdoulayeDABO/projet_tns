@@ -88,7 +88,16 @@
 </section>
 
 <section id="filterResult" class="card hidden section-space-top">
-  <audio id="audioPlayer" controls class="result-audio"></audio>
+  <div class="result-audio-grid">
+    <div class="result-audio-block">
+      <p class="result-audio-label">Avant filtrage</p>
+      <audio id="audioPlayerOriginal" controls class="result-audio"></audio>
+    </div>
+    <div class="result-audio-block">
+      <p class="result-audio-label">Après filtrage</p>
+      <audio id="audioPlayerFiltered" controls class="result-audio"></audio>
+    </div>
+  </div>
   <a id="btnDownload" class="btn-download result-download" href="#">
     <i class="bi bi-download"></i> Télécharger WAV filtré
   </a>

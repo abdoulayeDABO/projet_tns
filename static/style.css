@@ -1066,6 +1066,28 @@ td audio {
   margin-bottom: .75rem;
 }
 
+.result-audio-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .8rem;
+  margin-bottom: .6rem;
+}
+
+.result-audio-block {
+  border: 1px solid rgba(255, 174, 66, 0.24);
+  border-radius: .72rem;
+  padding: .55rem .6rem .2rem;
+  background: rgba(16, 20, 26, 0.75);
+}
+
+.result-audio-label {
+  font-size: .84rem;
+  color: #d9c6a4;
+  margin: 0 0 .38rem;
+  font-weight: 600;
+  letter-spacing: .01em;
+}
+
 .result-download {
   color: var(--accent-cold);
   text-decoration: none;
@@ -1121,6 +1143,10 @@ td audio {
   }
 
   .grid-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .result-audio-grid {
     grid-template-columns: 1fr;
   }
 }
