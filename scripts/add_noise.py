@@ -1,13 +1,18 @@
 import numpy as np
 from scipy.io import wavfile
+from pydub import AudioSegment
 
 def ajouter_bruit_tonal(input_file, output_file, freq_bruit=8000, amplitude_bruit=0.1):
     # 1. Lire le fichier original
-    samplerate, data = wavfile.read(input_file)
+    audio = AudioSegment.from_file(input_file)
+    samplerate = audio.frame_rate
+    raw_data = np.array(audio.get_array_of_samples())
     
     # Normalisation pour éviter les distorsions
-    if data.dtype == np.int16:
-        data = data / 32768.0
+    if audio.channels == 1:
+        data = raw_data.astype(np.float32) / 32768.0
+    else:
+        data = raw_data.reshape((-1, audio.channels)).astype(np.float32) / 32768.0
     
     # 2. Créer le bruit (un sifflement sinusoïdal)
     duree = len(data) / samplerate
@@ -28,4 +33,4 @@ def ajouter_bruit_tonal(input_file, output_file, freq_bruit=8000, amplitude_brui
     print(f"Fichier bruité créé : {output_file} avec un sifflement à {freq_bruit} Hz")
 
 # Utilisation
-ajouter_bruit_tonal("ton_fichier_voix.wav", "voix_avec_bruit.wav")
+ajouter_bruit_tonal("./audio1.mp3", "voix_avec_bruit.wav")
