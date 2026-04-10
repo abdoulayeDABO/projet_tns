@@ -9,6 +9,7 @@ let chartFFTFiltered = null;
 let chartMask = null;
 
 let dragStartX = null;
+let originalPreviewUrl = null;
 
 function getCurrentFilterParams() {
   const fmin = parseNumericInput('fmin', 300, { min: 0, max: 100000 });
@@ -96,6 +97,30 @@ function setProgress(id, value) {
   }
 }
 
+function resetProgressInstant(id) {
+  const el = document.getElementById(id);
+  if (!el) {
+    return;
+  }
+  const previousTransition = el.style.transition;
+  el.style.transition = 'none';
+  el.style.width = '0%';
+  el.getBoundingClientRect();
+  el.style.transition = previousTransition;
+}
+
+function setOriginalAudioPreview(file) {
+  const player = document.getElementById('audioPlayerOriginal');
+  if (!player || !file) {
+    return;
+  }
+  if (originalPreviewUrl) {
+    URL.revokeObjectURL(originalPreviewUrl);
+  }
+  originalPreviewUrl = URL.createObjectURL(file);
+  player.src = originalPreviewUrl;
+}
+
 function makeLineChart(canvasId, label, xAxis, yAxis, color = '#9b59b6') {
   if (typeof Chart === 'undefined') {
     return null;
@@ -181,6 +206,8 @@ function updateComparedChart(chart, labels, originalValues, filteredValues) {
       fill: false,
       tension: 0.1,
       pointRadius: 0,
+      borderWidth: 1.6,
+      order: 2,
     },
     {
       label: 'Filtré',
@@ -190,6 +217,8 @@ function updateComparedChart(chart, labels, originalValues, filteredValues) {
       fill: false,
       tension: 0.1,
       pointRadius: 0,
+      borderWidth: 2.2,
+      order: 1,
     },
   ];
   chart.update('none');
@@ -295,12 +324,28 @@ async function analyzeFile(file) {
     updateChart(chartTimeOriginal, payload.time_axis, payload.amplitude);
     updateChart(chartFFTOriginal, payload.freq_axis, payload.fft_magnitude);
     refreshMaskPreview();
+    setOriginalAudioPreview(file);
+
+    const resultBox = document.getElementById('filterResult');
+    const filteredPlayer = document.getElementById('audioPlayerFiltered');
+    const downloadButton = document.getElementById('btnDownload');
+    if (resultBox) {
+      resultBox.classList.remove('hidden');
+    }
+    if (filteredPlayer) {
+      filteredPlayer.removeAttribute('src');
+      filteredPlayer.load();
+    }
+    if (downloadButton) {
+      downloadButton.removeAttribute('href');
+    }
+
     setProgress('analyzeProgress', 100);
     window.showToast('Analyse FFT terminée.', 'success');
   } catch (error) {
     window.showToast(error.message || 'Erreur pendant l’analyse du fichier.', 'error');
   } finally {
-    window.setTimeout(() => setProgress('analyzeProgress', 0), 300);
+    window.setTimeout(() => resetProgressInstant('analyzeProgress'), 220);
   }
 }
 
@@ -335,8 +380,13 @@ async function runFilter() {
     updateComparedChart(chartFFTFiltered, payload.freq_axis, originalAnalysis.fft_magnitude, payload.fft_magnitude_filtered);
 
     const resultBox = document.getElementById('filterResult');
-    resultBox.classList.remove('hidden');
-    document.getElementById('audioPlayer').src = payload.download_url;
+    const filteredPlayer = document.getElementById('audioPlayerFiltered');
+    if (resultBox) {
+      resultBox.classList.remove('hidden');
+    }
+    if (filteredPlayer) {
+      filteredPlayer.src = payload.download_url;
+    }
     document.getElementById('btnDownload').href = payload.download_url;
     window.showToast('Filtrage appliqué avec succès.', 'success');
   } catch (error) {
